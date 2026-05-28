@@ -21,8 +21,22 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  title: "Life RPG",
-  description: "Personal habit tracking and life gamification web app",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://tracker-virid-mu.vercel.app"),
+  title: {
+    default: "Life RPG — Habit Tracker",
+    template: "%s | Life RPG",
+  },
+  description: "Personal habit tracking and life gamification web app by Murtadha Ali.",
+  applicationName: "Life RPG",
+  authors: [{ name: "Murtadha Ali", url: "https://github.com/murtadhaliwaa/tracker" }],
+  creator: "Murtadha Ali",
+  robots: { index: true, follow: true },
+  openGraph: {
+    type: "website",
+    siteName: "Life RPG",
+    title: "Life RPG — Habit Tracker",
+    description: "Personal habit tracking and life gamification web app.",
+  },
 };
 
 export default function RootLayout({

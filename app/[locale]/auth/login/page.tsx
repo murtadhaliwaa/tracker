@@ -48,7 +48,15 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
       <form onSubmit={onSubmit} className="w-full max-w-md space-y-3 rounded-xl border bg-card/80 p-6">
-        <h1 className="text-2xl font-semibold text-primary">Life RPG {mode === "signup" ? "Sign Up" : "Login"}</h1>
+        <div className="space-y-1 text-center">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">Official app</p>
+          <h1 className="text-2xl font-semibold text-primary">
+            Life RPG {mode === "signup" ? "Sign Up" : "Login"}
+          </h1>
+          <p className="text-xs text-muted-foreground">
+            Personal habit tracker — not affiliated with Google, Apple, or any bank.
+          </p>
+        </div>
         <input
           className="w-full rounded-md border bg-background px-3 py-2"
           type="email"

@@ -1,0 +1,4 @@
+Contact: https://github.com/murtadhaliwaa/tracker/issues
+Preferred-Languages: en, ar
+Canonical: https://tracker-virid-mu.vercel.app/.well-known/security.txt
+Policy: Personal habit-tracking app. Login is for your own account only.
