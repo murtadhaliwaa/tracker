@@ -1,0 +1,11 @@
+PASSWORD_DB="oYuqHyztbaeeInSH"
+
+NEXT_PUBLIC_SUPABASE_URL=https://ifquqqqzhindcbfsytsa.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_m-3kZcksgYUUZgQiD4pBag_6x_Ge5kr
+
+
+# Connect to Postgres via the shared transaction-mode pooler (IPv4-only)
+DATABASE_URL="postgresql://postgres.ifquqqqzhindcbfsytsa:oYuqHyztbaeeInSH@aws-1-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+
+# Connect to Postgres via the shared session-mode pooler (used for migrations)
+DIRECT_URL="postgresql://postgres.ifquqqqzhindcbfsytsa:oYuqHyztbaeeInSH@aws-1-eu-central-1.pooler.supabase.com:5432/postgres"

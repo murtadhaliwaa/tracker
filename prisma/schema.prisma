@@ -1,0 +1,319 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum HabitPeriod {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum HabitLogType {
+  CHECKBOX
+  FORM
+  TIMER
+}
+
+enum ReflectionType {
+  DAILY
+  WEEKLY
+}
+
+model User {
+  id                   String                @id @default(cuid())
+  email                String                @unique
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  habits               Habit[]
+  habitLogs            HabitLog[]
+  streaks              Streak[]
+  healthBar            HealthBar?
+  meditationSessions   MeditationSession[]
+  readingSessions      ReadingSession[]
+  courses              Course[]
+  courseLessons        CourseLesson[]
+  weeklyBossChallenges WeeklyBossChallenge[]
+  achievements         Achievement[]
+  rewardVaultItems     RewardVault[]
+  reflections          Reflection[]
+  xpTransactions       XPTransaction[]
+  profile              UserProfile?
+  notificationSettings NotificationSetting[]
+  habitCategories      HabitCategory[]
+}
+
+model HabitCategory {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  color     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habits    Habit[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model Habit {
+  id            String                @id @default(cuid())
+  userId        String
+  categoryId    String?
+  title         String
+  description   String?
+  category      String?
+  frequency     Json?
+  period        HabitPeriod
+  xpValue       Int                   @default(10)
+  icon          String                @default("Sword")
+  color         String                @default("#7c3aed")
+  logType       HabitLogType          @default(CHECKBOX)
+  isArchived    Boolean               @default(false)
+  order         Int                   @default(0)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryRef   HabitCategory?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  logs          HabitLog[]
+  streak        Streak?
+  notifications NotificationSetting[]
+
+  @@index([userId, isArchived, period, order])
+}
+
+model HabitLog {
+  id            String       @id @default(cuid())
+  userId        String
+  habitId       String
+  date          DateTime
+  completed     Boolean      @default(true)
+  notes         String?
+  duration      Int?
+  logType       HabitLogType
+  recoveryQuest Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habit         Habit        @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
+  @@index([userId, date])
+  @@index([userId, completed, date])
+  @@index([userId, habitId, date])
+}
+
+model Streak {
+  id                String    @id @default(cuid())
+  userId            String
+  habitId           String?   @unique
+  currentStreak     Int       @default(0)
+  longestStreak     Int       @default(0)
+  lastCompletedDate DateTime?
+  lastFreezeUsedAt  DateTime?
+  lastMissedCheckAt DateTime?
+  freezesAvailable  Int       @default(0)
+  freezesUsed       Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habit             Habit?    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, habitId])
+  @@index([userId, habitId])
+}
+
+model HealthBar {
+  id                     String    @id @default(cuid())
+  userId                 String    @unique
+  currentHealth          Int       @default(5)
+  maxHealth              Int       @default(5)
+  lastPenaltyDate        DateTime?
+  isWounded              Boolean   @default(false)
+  recoveryQuestCompleted Boolean   @default(false)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MeditationSession {
+  id                    String   @id @default(cuid())
+  userId                String
+  duration              Int
+  type                  String
+  notes                 String?
+  sessionDate           DateTime @default(now())
+  focusMultiplierEarned Float    @default(1)
+  createdAt             DateTime @default(now())
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, sessionDate])
+}
+
+model ReadingSession {
+  id        String   @id @default(cuid())
+  userId    String
+  bookTitle String
+  pagesRead Int
+  rating    Int?
+  notes     String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model Course {
+  id                   String         @id @default(cuid())
+  userId               String
+  title                String
+  description          String?
+  category             String?
+  icon                 String         @default("📚")
+  provider             String?
+  totalLessons         Int            @default(0)
+  completedLessons     Int            @default(0)
+  priority             Int            @default(0)
+  difficulty           Int            @default(1)
+  xpReward             Int            @default(100)
+  prerequisiteCourseId String?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  user                 User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prerequisiteCourse   Course?        @relation("CoursePrereq", fields: [prerequisiteCourseId], references: [id], onDelete: SetNull)
+  unlocks              Course[]       @relation("CoursePrereq")
+  lessons              CourseLesson[]
+
+  @@index([userId, priority, createdAt])
+}
+
+model CourseLesson {
+  id           String    @id @default(cuid())
+  userId       String
+  courseId     String
+  lessonNumber Int
+  title        String
+  isCompleted  Boolean   @default(false)
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course       Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, lessonNumber])
+  @@index([courseId, isCompleted])
+}
+
+model WeeklyBossChallenge {
+  id           String   @id @default(cuid())
+  userId       String
+  title        String
+  description  String?
+  targetValue  Int
+  currentValue Int      @default(0)
+  xpReward     Int
+  weekNumber   Int
+  isCompleted  Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekNumber])
+}
+
+model Achievement {
+  id          String    @id @default(cuid())
+  userId      String
+  type        String?
+  title       String
+  description String
+  icon        String
+  unlockedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+  @@index([userId])
+}
+
+model RewardVault {
+  id            String    @id @default(cuid())
+  userId        String
+  title         String
+  description   String?
+  emoji         String    @default("🎁")
+  xpCost        Int       @default(100)
+  requiredLevel Int       @default(1)
+  isUnlocked    Boolean   @default(true)
+  claimedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Reflection {
+  id        String         @id @default(cuid())
+  userId    String
+  type      ReflectionType
+  answers   Json
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, createdAt])
+}
+
+model XPTransaction {
+  id         String   @id @default(cuid())
+  userId     String
+  amount     Int
+  reason     String
+  multiplier Float    @default(1)
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, reason, createdAt])
+}
+
+model UserProfile {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  name               String?
+  level              Int      @default(1)
+  totalXP            Int      @default(0)
+  currentXP          Int      @default(0)
+  xpToNextLevel      Int      @default(100)
+  title              String   @default("Novice")
+  avatarStyle        String?
+  preferredLanguage  String   @default("en")
+  onboardingComplete Boolean  @default(false)
+  statsSeeded        Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NotificationSetting {
+  id        String   @id @default(cuid())
+  userId    String
+  habitId   String
+  time      String
+  isEnabled Boolean  @default(true)
+  days      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, time])
+  @@index([userId])
+}

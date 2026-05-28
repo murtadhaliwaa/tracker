@@ -1,0 +1,483 @@
+"use client";
+
+import { useCallback, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import {
+  DndContext,
+  closestCenter,
+  type DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { toast } from "sonner";
+import {
+  Archive,
+  ArchiveRestore,
+  Check,
+  Flame,
+  GripVertical,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { RPGCard } from "@/components/ui/rpg-card";
+import { RPGPageHeader } from "@/components/ui/rpg-page-header";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { LevelUpModal } from "@/components/shared/level-up-modal";
+import { PerfectDayBanner } from "@/components/shared/perfect-day-banner";
+import { HabitFormDialog, type HabitFormValues } from "@/components/habits/habit-form-dialog";
+import { habitIconDisplay, type HabitFrequency } from "@/lib/habit-display";
+import {
+  archiveHabit,
+  deleteHabit,
+  logHabit,
+  unarchiveHabit,
+  updateHabitOrder,
+} from "@/app/[locale]/(protected)/habits/actions";
+
+export type HabitClientItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  period: "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
+  xpValue: number;
+  icon: string;
+  color: string;
+  logType: "CHECKBOX" | "FORM" | "TIMER";
+  isArchived: boolean;
+  order: number;
+  category: string | null;
+  frequency: HabitFrequency | null;
+  currentStreak: number;
+  completedToday: boolean;
+};
+
+type Props = {
+  habits: HabitClientItem[];
+  categories: string[];
+};
+
+function parseFrequency(frequency: HabitFrequency | null): Pick<HabitFormValues, "frequencyKind" | "specificDays" | "timesPerWeek"> {
+  if (!frequency) return { frequencyKind: "daily", specificDays: [], timesPerWeek: 3 };
+  if (frequency.type === "specific_days") {
+    return { frequencyKind: "specific_days", specificDays: frequency.days, timesPerWeek: 3 };
+  }
+  if (frequency.type === "times_per_week") {
+    return { frequencyKind: "times_per_week", specificDays: [], timesPerWeek: frequency.count };
+  }
+  if (frequency.type === "once_per_month") return { frequencyKind: "once_per_month", specificDays: [], timesPerWeek: 3 };
+  if (frequency.type === "once_per_year") return { frequencyKind: "once_per_year", specificDays: [], timesPerWeek: 3 };
+  return { frequencyKind: "daily", specificDays: [], timesPerWeek: 3 };
+}
+
+function HabitTimer({ onComplete }: { habitId: string; logType: "TIMER"; onComplete: (duration: number, deepFocus: boolean) => void }) {
+  const t = useTranslations("habits");
+  const [seconds, setSeconds] = useState(0);
+  const [running, setRunning] = useState(false);
+  const [deepFocus, setDeepFocus] = useState(false);
+
+  useMemo(() => {
+    if (!running) return;
+    const id = window.setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [running]);
+
+  const mm = String(Math.floor(seconds / 60)).padStart(2, "0");
+  const ss = String(seconds % 60).padStart(2, "0");
+
+  return (
+    <div className="mt-2 space-y-2 rounded-lg border border-[#1e1e3a] bg-[#13131f] p-3">
+      <p className="text-center font-mono text-2xl text-rpg-gold">
+        {mm}:{ss}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" onClick={() => setRunning(true)} disabled={running}>
+          {t("timerStart")}
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => setRunning(false)} disabled={!running}>
+          {t("timerPause")}
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => {
+            setRunning(false);
+            onComplete(Math.max(1, Math.ceil(seconds / 60)), deepFocus);
+            setSeconds(0);
+          }}
+          disabled={seconds === 0}
+        >
+          {t("timerStop")}
+        </Button>
+      </div>
+      <label className="flex items-center gap-2 text-xs text-rpg-secondary">
+        <Checkbox checked={deepFocus} onCheckedChange={(v) => setDeepFocus(Boolean(v))} />
+        {t("deepFocus")}
+      </label>
+    </div>
+  );
+}
+
+function SortableHabitRow({
+  habit,
+  archived,
+  onEdit,
+  onDelete,
+  onArchive,
+  onUnarchive,
+  onComplete,
+}: {
+  habit: HabitClientItem;
+  archived: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onArchive: () => void;
+  onUnarchive: () => void;
+  onComplete: (notes?: string, duration?: number, deepFocus?: boolean) => void;
+}) {
+  const t = useTranslations("habits");
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: habit.id, disabled: archived });
+  const [formOpen, setFormOpen] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [timerOpen, setTimerOpen] = useState(false);
+
+  const style = { transform: CSS.Transform.toString(transform), transition };
+
+  return (
+    <>
+      <div
+        ref={setNodeRef}
+        style={{ ...style, borderLeftColor: habit.color }}
+        className="flex items-center justify-between gap-3 rounded-lg border border-[#1e1e3a] bg-[#0f0f1a] px-3 py-2"
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          {!archived ? (
+            <button type="button" className="text-rpg-secondary" {...attributes} {...listeners}>
+              <GripVertical className="size-4" />
+            </button>
+          ) : null}
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-[#1e1e3a] bg-[#0f0f1a] text-lg">
+            {habitIconDisplay(habit.icon)}
+          </div>
+          <div className="min-w-0">
+            <p className={`truncate text-sm ${habit.completedToday ? "text-rpg-green line-through" : "text-rpg-text"}`}>
+              {habit.title}
+            </p>
+            <p className="text-xs text-rpg-secondary">+{habit.xpValue} XP</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <p className="hidden items-center gap-1 text-xs text-rpg-secondary sm:flex">
+            <Flame className="size-3 text-rpg-gold" /> {habit.currentStreak}
+          </p>
+          {!archived ? (
+            <>
+              <Button size="icon-sm" variant="ghost" onClick={onEdit}>
+                <Pencil className="size-4" />
+              </Button>
+              <Button size="icon-sm" variant="ghost" onClick={onArchive}>
+                <Archive className="size-4" />
+              </Button>
+              <Button size="icon-sm" variant="ghost" onClick={onDelete}>
+                <Trash2 className="size-4 text-rpg-red" />
+              </Button>
+              {habit.completedToday ? (
+                <div className="inline-flex items-center gap-1 rounded-lg border border-rpg-green/40 bg-rpg-green/10 px-2 py-1 text-xs font-bold text-rpg-green">
+                  <Check className="size-4" />
+                  {t("completed")}
+                </div>
+              ) : habit.logType === "CHECKBOX" ? (
+                <Button size="sm" variant="outline" onClick={() => onComplete()}>
+                  {t("complete")}
+                </Button>
+              ) : habit.logType === "FORM" ? (
+                <Button size="sm" variant="outline" onClick={() => setFormOpen(true)}>
+                  {t("complete")}
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" onClick={() => setTimerOpen((v) => !v)}>
+                  {timerOpen ? t("hideTimer") : t("startTimer")}
+                </Button>
+              )}
+            </>
+          ) : (
+            <Button size="sm" variant="outline" onClick={onUnarchive}>
+              <ArchiveRestore className="size-4" />
+              {t("unarchive")}
+            </Button>
+          )}
+        </div>
+      </div>
+      {timerOpen && habit.logType === "TIMER" ? (
+        <HabitTimer
+          habitId={habit.id}
+          logType="TIMER"
+          onComplete={(duration, deepFocus) => onComplete(undefined, duration, deepFocus)}
+        />
+      ) : null}
+
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+        <DialogContent className="border-[#1e1e3a] bg-[#0f0f1a] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("formNotesTitle")}</DialogTitle>
+          </DialogHeader>
+          <Label htmlFor="notes">{t("formNotesLabel")}</Label>
+          <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                onComplete(notes);
+                setFormOpen(false);
+                setNotes("");
+              }}
+            >
+              {t("complete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+export function HabitsClient({ habits: initialHabits, categories }: Props) {
+  const t = useTranslations("habits");
+  const router = useRouter();
+  const [habits, setHabits] = useState(initialHabits);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editHabit, setEditHabit] = useState<HabitFormValues | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [levelUp, setLevelUp] = useState<{ level: number; title: string } | null>(null);
+  const [perfectDay, setPerfectDay] = useState(false);
+  const [, startTransition] = useTransition();
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+
+  const grouped = useMemo(() => {
+    return {
+      DAILY: habits.filter((h) => h.period === "DAILY" && !h.isArchived),
+      WEEKLY: habits.filter((h) => h.period === "WEEKLY" && !h.isArchived),
+      MONTHLY: habits.filter((h) => h.period === "MONTHLY" && !h.isArchived),
+      YEARLY: habits.filter((h) => h.period === "YEARLY" && !h.isArchived),
+      ARCHIVED: habits.filter((h) => h.isArchived),
+    };
+  }, [habits]);
+
+  const refresh = useCallback(() => router.refresh(), [router]);
+
+  const handleComplete = (habit: HabitClientItem, notes?: string, duration?: number, deepFocus?: boolean) => {
+    startTransition(async () => {
+      try {
+        const result = await logHabit({
+          habitId: habit.id,
+          logType: habit.logType,
+          notes,
+          duration,
+          deepFocus,
+        });
+        setHabits((prev) =>
+          prev.map((h) => (h.id === habit.id ? { ...h, completedToday: true, currentStreak: h.currentStreak + 1 } : h)),
+        );
+        toast.success(t("habitLogged", { xp: result.xpAwarded }));
+        if (result.leveledUp) setLevelUp({ level: result.newLevel, title: result.newTitle });
+        if (result.perfectDay.isPerfectDay && result.perfectDay.bonusAwarded) setPerfectDay(true);
+        refresh();
+      } catch {
+        toast.error(t("error"));
+      }
+    });
+  };
+
+  const onDragEnd = (period: keyof typeof grouped) => (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const items = grouped[period];
+    const oldIndex = items.findIndex((h) => h.id === active.id);
+    const newIndex = items.findIndex((h) => h.id === over.id);
+    const reordered = arrayMove(items, oldIndex, newIndex);
+    setHabits((prev) => {
+      const others = prev.filter((h) => !(h.period === period && !h.isArchived));
+      return [...others, ...reordered.map((h, idx) => ({ ...h, order: idx + 1 }))];
+    });
+    startTransition(async () => {
+      await updateHabitOrder({
+        items: reordered.map((h, idx) => ({ id: h.id, order: idx + 1 })),
+      });
+      refresh();
+    });
+  };
+
+  const periodLabels: Record<keyof typeof grouped, string> = {
+    DAILY: t("periodDaily"),
+    WEEKLY: t("periodWeekly"),
+    MONTHLY: t("periodMonthly"),
+    YEARLY: t("periodYearly"),
+    ARCHIVED: t("tabArchived"),
+  };
+
+  const empty = habits.length === 0;
+
+  return (
+    <div className="space-y-5">
+      <PerfectDayBanner show={perfectDay} />
+      <LevelUpModal
+        open={Boolean(levelUp)}
+        onOpenChange={() => setLevelUp(null)}
+        level={levelUp?.level ?? 1}
+        title={levelUp?.title ?? ""}
+      />
+
+      <RPGPageHeader
+        title={t("title")}
+        subtitle={t("subtitle")}
+        action={
+          <Button
+            variant="outline"
+            className="border-[#f0c040] bg-transparent text-[#f0c040] hover:bg-[rgba(240,192,64,0.1)]"
+            onClick={() => {
+              setEditHabit(null);
+              setFormOpen(true);
+            }}
+          >
+            <Plus className="size-4" />
+            {t("addHabit")}
+          </Button>
+        }
+      />
+
+      {empty ? (
+        <RPGCard glow="gold" className="p-6 text-center">
+          <p className="text-rpg-secondary">{t("empty")}</p>
+          <Button
+            className="mt-4 border-[#f0c040] bg-transparent text-[#f0c040] hover:bg-[rgba(240,192,64,0.1)]"
+            variant="outline"
+            onClick={() => setFormOpen(true)}
+          >
+            <Plus className="size-4" />
+            {t("addHabit")}
+          </Button>
+        </RPGCard>
+      ) : null}
+
+      {(Object.entries(grouped) as [keyof typeof grouped, HabitClientItem[]][]).map(([period, items]) => {
+        if (period !== "ARCHIVED" && items.length === 0) return null;
+        if (period === "ARCHIVED" && items.length === 0) return null;
+        const dailyPerfect =
+          period === "DAILY" && items.length > 0 && items.every((h) => h.completedToday);
+
+        return (
+          <RPGCard key={period} glow={period === "DAILY" ? (dailyPerfect ? "gold" : "teal") : "purple"}>
+            <div className="flex items-center gap-3">
+              <p className="text-sm tracking-wide text-rpg-text">{periodLabels[period]}</p>
+              <span className="rounded-full border border-[#1e1e3a] bg-[#0f0f1a] px-2 py-0.5 text-[11px] text-rpg-secondary">
+                {items.length}
+              </span>
+            </div>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd(period)}>
+              <SortableContext items={items.map((h) => h.id)} strategy={verticalListSortingStrategy}>
+                <div className="mt-3 space-y-2">
+                  {items.map((habit) => (
+                    <SortableHabitRow
+                      key={habit.id}
+                      habit={habit}
+                      archived={period === "ARCHIVED"}
+                      onEdit={() => {
+                        const freq = parseFrequency(habit.frequency);
+                        setEditHabit({
+                          id: habit.id,
+                          title: habit.title,
+                          description: habit.description ?? "",
+                          period: habit.period,
+                          logType: habit.logType,
+                          categoryName: habit.category ?? "",
+                          xpValue: habit.xpValue,
+                          icon: habit.icon,
+                          color: habit.color,
+                          ...freq,
+                        });
+                        setFormOpen(true);
+                      }}
+                      onDelete={() => setDeleteId(habit.id)}
+                      onArchive={() => {
+                        startTransition(async () => {
+                          await archiveHabit(habit.id);
+                          toast.success(t("archived"));
+                          refresh();
+                        });
+                      }}
+                      onUnarchive={() => {
+                        startTransition(async () => {
+                          await unarchiveHabit(habit.id);
+                          toast.success(t("unarchived"));
+                          refresh();
+                        });
+                      }}
+                      onComplete={(notes, duration, deepFocus) => handleComplete(habit, notes, duration, deepFocus)}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </RPGCard>
+        );
+      })}
+
+      <HabitFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        categories={categories}
+        initial={editHabit}
+        onSaved={refresh}
+      />
+
+      <AlertDialog open={Boolean(deleteId)} onOpenChange={() => setDeleteId(null)}>
+        <AlertDialogContent className="border-[#1e1e3a] bg-[#0f0f1a]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("deleteTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("deleteDescription")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-rpg-red text-white hover:bg-rpg-red/90"
+              onClick={() => {
+                if (!deleteId) return;
+                startTransition(async () => {
+                  await deleteHabit(deleteId);
+                  toast.success(t("deleted"));
+                  setDeleteId(null);
+                  refresh();
+                });
+              }}
+            >
+              {t("delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
