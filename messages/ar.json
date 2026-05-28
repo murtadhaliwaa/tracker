@@ -41,7 +41,10 @@
     "player": "اللاعب",
     "streak": "12 يوم متتالي",
     "streakCount": "{count, plural, one {# يوم متتالي} other {# يوم متتالي}}",
-    "switchToEnglish": "English"
+    "switchToEnglish": "English",
+    "openMenu": "فتح القائمة",
+    "closeMenu": "إغلاق القائمة",
+    "mobileNav": "التنقل الرئيسي"
   },
   "dashboard": {
     "title": "الإحاطة الصباحية",

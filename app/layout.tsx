@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cinzel, Inter, Cairo } from "next/font/google";
 import { PreloadCleanup } from "@/components/preload-cleanup";
 import "./globals.css";
@@ -37,6 +37,12 @@ export const metadata: Metadata = {
     title: "Life RPG — Habit Tracker",
     description: "Personal habit tracking and life gamification web app.",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#0a0a0f",
 };
 
 export default function RootLayout({

@@ -43,7 +43,10 @@
     "player": "Player",
     "streak": "12 day streak",
     "streakCount": "{count, plural, one {# day streak} other {# day streak}}",
-    "switchToEnglish": "English"
+    "switchToEnglish": "English",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "mobileNav": "Main navigation"
   },
   "dashboard": {
     "title": "Morning Briefing",
