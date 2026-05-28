@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cinzel, Inter, Cairo } from "next/font/google";
 import { PreloadCleanup } from "@/components/preload-cleanup";
+import { RegisterServiceWorker } from "@/components/pwa/register-sw";
 import "./globals.css";
 
 const inter = Inter({
@@ -37,6 +38,18 @@ export const metadata: Metadata = {
     title: "Life RPG — Habit Tracker",
     description: "Personal habit tracking and life gamification web app.",
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Life RPG",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+  },
 };
 
 export const viewport: Viewport = {
@@ -58,6 +71,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <PreloadCleanup />
+        <RegisterServiceWorker />
         {children}
       </body>
     </html>
