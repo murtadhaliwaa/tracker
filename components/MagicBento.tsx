@@ -11,6 +11,8 @@ export interface BentoCardProps {
   media?: React.ReactNode;
   footer?: React.ReactNode;
   textAutoHide?: boolean;
+  titleClamp?: 1 | 2 | 3;
+  descriptionClamp?: 1 | 2 | 3;
   disableAnimations?: boolean;
 }
 
@@ -530,6 +532,18 @@ const useMobileDetection = () => {
   return isMobile;
 };
 
+function cardTitleClampClass(card: BentoCardProps, textAutoHide: boolean) {
+  const lines = card.titleClamp ?? (textAutoHide ? 1 : 0);
+  if (!lines) return "break-words";
+  return `text-clamp-${lines} break-words`;
+}
+
+function cardDescriptionClampClass(card: BentoCardProps, textAutoHide: boolean) {
+  const lines = card.descriptionClamp ?? (textAutoHide ? 2 : 0);
+  if (!lines) return "";
+  return `text-clamp-${lines}`;
+}
+
 const MagicBento: React.FC<BentoProps> = ({
   cards,
   className = '',
@@ -601,10 +615,10 @@ const MagicBento: React.FC<BentoProps> = ({
                     {card.media ? <div className="card__media shrink-0">{card.media}</div> : null}
                   </div>
                   <div className="card__content flex flex-col relative">
-                    <h3 className={`card__title m-0 mb-1 ${textAutoHide ? 'text-clamp-1' : ''}`}>
+                    <h3 className={`card__title m-0 mb-1 ${cardTitleClampClass(card, textAutoHide)}`}>
                       {card.title}
                     </h3>
-                    <p className={`card__description text-xs leading-5 ${textAutoHide ? 'text-clamp-2' : ''}`}>
+                    <p className={`card__description text-xs leading-5 ${cardDescriptionClampClass(card, textAutoHide)}`}>
                       {card.description}
                     </p>
                     {card.footer ? <div className="card__footer mt-2">{card.footer}</div> : null}
@@ -734,10 +748,10 @@ const MagicBento: React.FC<BentoProps> = ({
                   {card.media ? <div className="card__media shrink-0">{card.media}</div> : null}
                 </div>
                 <div className="card__content flex flex-col relative">
-                  <h3 className={`card__title m-0 mb-1 ${textAutoHide ? 'text-clamp-1' : ''}`}>
+                  <h3 className={`card__title m-0 mb-1 ${cardTitleClampClass(card, textAutoHide)}`}>
                     {card.title}
                   </h3>
-                  <p className={`card__description text-xs leading-5 ${textAutoHide ? 'text-clamp-2' : ''}`}>
+                  <p className={`card__description text-xs leading-5 ${cardDescriptionClampClass(card, textAutoHide)}`}>
                     {card.description}
                   </p>
                   {card.footer ? <div className="card__footer mt-2">{card.footer}</div> : null}

@@ -370,7 +370,7 @@ export function DashboardClient(props: Props) {
                 <Skull className="size-5 text-rpg-purple" />
                 {t("weeklyBoss")}
               </p>
-              <h2 className="mt-2 truncate font-heading text-2xl text-rpg-text">{boss.title}</h2>
+              <h2 className="mt-2 line-clamp-2 break-words font-heading text-xl leading-snug text-rpg-text sm:text-2xl">{boss.title}</h2>
               <p className="mt-2 text-sm text-rpg-muted">{boss.description}</p>
               <div className="mt-5">
                 <div className="mb-2 flex items-center justify-between text-xs">

@@ -165,6 +165,7 @@ export function DashboardMagicBento({
         label: t("weeklyBoss"),
         title: bossTitle,
         description: `${bossCurrent} / ${bossTarget}`,
+        titleClamp: 2,
       },
       {
         color: SURFACE,

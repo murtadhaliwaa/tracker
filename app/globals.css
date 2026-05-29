@@ -493,6 +493,13 @@
   color: #d4af37;
 }
 
+@media (max-width: 599px) {
+  .magic-bento-rpg .card__title {
+    font-size: clamp(1.125rem, 4.5vw, 1.5rem);
+    line-height: 1.25;
+  }
+}
+
 .magic-bento-rpg .card__description {
   color: #666688;
 }
@@ -593,6 +600,15 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bento-section .text-clamp-3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   overflow: hidden;
   text-overflow: ellipsis;
 }
