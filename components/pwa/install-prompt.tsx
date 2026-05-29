@@ -113,11 +113,12 @@ export function PwaInstallPrompt() {
       >
         <div className="mx-auto flex max-w-lg items-center gap-3">
           <Image
-            src="/icons/icon-192.png"
+            src="/icons/apple-touch-icon.png"
             alt=""
             width={40}
             height={40}
             className="size-10 shrink-0 rounded-xl"
+            priority
           />
 
           <div className="min-w-0 flex-1">
@@ -157,11 +158,12 @@ export function PwaInstallPrompt() {
         <div className="fixed inset-x-4 bottom-24 z-[70] mx-auto max-w-sm animate-in slide-in-from-bottom duration-200 md:bottom-6">
           <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#1a1a24]/95 px-4 py-3 shadow-2xl backdrop-blur-md">
             <Image
-              src="/icons/icon-192.png"
+              src="/icons/apple-touch-icon.png"
               alt=""
               width={32}
               height={32}
               className="size-8 shrink-0 rounded-lg"
+              priority
             />
             <p className="text-sm font-medium text-white">{t("installing")}</p>
           </div>

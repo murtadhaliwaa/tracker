@@ -1,9 +1,15 @@
-const CACHE = "life-rpg-shell-v2";
+const CACHE = "life-rpg-shell-v3";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE).then((cache) =>
-      cache.addAll(["/en/dashboard", "/icons/icon-192.png", "/icons/icon-512.png"]),
+      cache.addAll([
+        "/en/dashboard",
+        "/icons/icon-192.png",
+        "/icons/icon-512.png",
+        "/icons/apple-touch-icon.png",
+        "/icons/icon-maskable-512.png",
+      ]),
     ),
   );
   self.skipWaiting();

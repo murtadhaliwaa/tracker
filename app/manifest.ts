@@ -18,8 +18,19 @@ export default function manifest(): MetadataRoute.Manifest {
     prefer_related_applications: false,
     icons: [
       {
+        src: "/icons/favicon-32.png",
+        sizes: "32x32",
+        type: "image/png",
+      },
+      {
         src: "/icons/icon-192.png",
         sizes: "192x192",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/apple-touch-icon.png",
+        sizes: "180x180",
         type: "image/png",
         purpose: "any",
       },
