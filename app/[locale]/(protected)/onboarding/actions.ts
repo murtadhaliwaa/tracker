@@ -32,9 +32,19 @@ export async function saveOnboardingName(input: unknown) {
   const viewer = await requireViewer();
   const parsed = nameSchema.parse(input);
 
-  await prisma.userProfile.update({
+  await prisma.userProfile.upsert({
     where: { userId: viewer.userId },
-    data: { name: parsed.name },
+    create: {
+      userId: viewer.userId,
+      name: parsed.name,
+      level: 1,
+      totalXP: 0,
+      currentXP: 0,
+      xpToNextLevel: 500,
+      title: "Novice",
+      preferredLanguage: "en",
+    },
+    update: { name: parsed.name },
   });
 
   revalidateAll();
@@ -76,9 +86,19 @@ export async function addOnboardingHabits(
 export async function completeOnboarding() {
   const viewer = await requireViewer();
 
-  await prisma.userProfile.update({
+  await prisma.userProfile.upsert({
     where: { userId: viewer.userId },
-    data: { onboardingComplete: true },
+    create: {
+      userId: viewer.userId,
+      level: 1,
+      totalXP: 0,
+      currentXP: 0,
+      xpToNextLevel: 500,
+      title: "Novice",
+      preferredLanguage: "en",
+      onboardingComplete: true,
+    },
+    update: { onboardingComplete: true },
   });
 
   revalidateAll();

@@ -44,14 +44,17 @@ export default async function SettingsPage({ params }: { params: Promise<{ local
     }
   }
 
-  const notifications = habits.map((habit) => {
-    const setting = notificationsByHabit.get(habit.id)!;
-    return {
-      id: setting.id,
-      habitTitle: habit.title,
-      time: setting.time || "08:00",
-      isEnabled: setting.isEnabled,
-    };
+  const notifications = habits.flatMap((habit) => {
+    const setting = notificationsByHabit.get(habit.id);
+    if (!setting) return [];
+    return [
+      {
+        id: setting.id,
+        habitTitle: habit.title,
+        time: setting.time || "08:00",
+        isEnabled: setting.isEnabled,
+      },
+    ];
   });
 
   return (

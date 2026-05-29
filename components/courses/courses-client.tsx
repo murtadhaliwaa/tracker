@@ -15,7 +15,6 @@ import { getCourseCategoryLabel, getCourseCategoryLabels } from "@/lib/course-di
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";

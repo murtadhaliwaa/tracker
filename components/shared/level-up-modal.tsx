@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import BorderGlow from "@/components/BorderGlow";
 import ShinyText from "@/components/ShinyText";
 import { RPG_BORDER_GLOW, RPG_SHINY_GOLD } from "@/components/react-bits/rpg-theme";
+import { translateLevelTitle } from "@/lib/level-display";
 
 type Props = {
   open: boolean;
@@ -25,9 +26,7 @@ const PARTICLES = Array.from({ length: 20 }, (_, i) => ({
 export function LevelUpModal({ open, onOpenChange, level, title }: Props) {
   const t = useTranslations("common");
   const tTitles = useTranslations("common.levelTitles");
-  const displayTitle = ["Novice", "Seeker", "Scholar", "Sage", "Master", "Legend"].includes(title)
-    ? tTitles(title as "Novice" | "Seeker" | "Scholar" | "Sage" | "Master" | "Legend")
-    : title;
+  const displayTitle = translateLevelTitle(tTitles, title);
 
   useEffect(() => {
     if (!open) return;

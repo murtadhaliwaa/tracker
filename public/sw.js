@@ -1,4 +1,4 @@
-const CACHE = "life-rpg-shell-v5";
+const CACHE = "life-rpg-shell-v6";
 const ASSETS = [
   "/icons/favicon-32.png",
   "/icons/icon-192.png",

@@ -31,9 +31,20 @@ export async function updateProfile(input: unknown) {
 
   if (!isValidAvatarStyle(avatarStyle)) throw new Error("Invalid avatar style");
 
-  await prisma.userProfile.update({
+  await prisma.userProfile.upsert({
     where: { userId: viewer.userId },
-    data: {
+    create: {
+      userId: viewer.userId,
+      name: parsed.name,
+      avatarStyle,
+      level: 1,
+      totalXP: 0,
+      currentXP: 0,
+      xpToNextLevel: 500,
+      title: "Novice",
+      preferredLanguage: "en",
+    },
+    update: {
       name: parsed.name,
       avatarStyle,
     },
@@ -48,9 +59,19 @@ export async function updateProfileName(name: string) {
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Name is required");
 
-  await prisma.userProfile.update({
+  await prisma.userProfile.upsert({
     where: { userId: viewer.userId },
-    data: { name: trimmed },
+    create: {
+      userId: viewer.userId,
+      name: trimmed,
+      level: 1,
+      totalXP: 0,
+      currentXP: 0,
+      xpToNextLevel: 500,
+      title: "Novice",
+      preferredLanguage: "en",
+    },
+    update: { name: trimmed },
   });
 
   revalidateProfilePaths();

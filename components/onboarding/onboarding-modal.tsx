@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { habitIconDisplay } from "@/lib/habit-display";
+import { getOnboardingPresetLabel, type OnboardingPresetKey } from "@/lib/onboarding-display";
 import { XpProgressBar } from "@/components/gamification/player-card";
 import {
   ONBOARDING_HABIT_PRESETS,
@@ -109,7 +110,9 @@ export function OnboardingModal({ open }: Props) {
                     )}
                   >
                     <span className="text-lg">{habitIconDisplay(preset.icon)}</span>
-                    <p className="mt-2 text-sm font-medium text-[#e8e8f0]">{t(`presets.${preset.key}`)}</p>
+                    <p className="mt-2 text-sm font-medium text-[#e8e8f0]">
+                      {getOnboardingPresetLabel(t, preset.key)}
+                    </p>
                   </button>
                 );
               })}
@@ -122,7 +125,7 @@ export function OnboardingModal({ open }: Props) {
                   await addOnboardingHabits(
                     selected.map((key) => ({
                       key,
-                      title: t(`presets.${key}`),
+                      title: getOnboardingPresetLabel(t, key as OnboardingPresetKey),
                     })),
                   );
                   setStep(4);

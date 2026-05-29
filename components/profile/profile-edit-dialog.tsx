@@ -165,7 +165,7 @@ type Props = {
   name: string | null;
   avatarStyle: string | null;
   level: number;
-  title: string;
+  characterTitle: string;
   onSaved: () => void;
 };
 
@@ -175,7 +175,7 @@ export function ProfileEditDialog({
   name,
   avatarStyle,
   level,
-  title,
+  characterTitle,
   onSaved,
 }: Props) {
   const t = useTranslations("profile");
@@ -239,7 +239,7 @@ export function ProfileEditDialog({
                 {previewName}
               </p>
               <p className="mt-0.5 text-xs text-rpg-secondary">
-                {t("levelTitle", { level, title })}
+                {t("levelTitle", { level, title: characterTitle })}
               </p>
               <p className="mt-0.5 text-[11px] text-rpg-muted">
                 {selectedIconLabel} · {selectedColorLabel}

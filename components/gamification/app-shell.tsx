@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
+import { translateLevelTitle } from "@/lib/level-display";
 import { PlayerCard } from "@/components/gamification/player-card";
 import {
   AlertDialog,
@@ -49,11 +50,7 @@ type LinkKey = (typeof links)[number];
 
 function useDisplayTitle(playerTitle: string) {
   const tTitles = useTranslations("common.levelTitles");
-  return ["Novice", "Seeker", "Scholar", "Adept", "Expert", "Master", "Legend", "Champion", "Sage"].includes(
-    playerTitle,
-  )
-    ? tTitles(playerTitle as "Novice" | "Seeker" | "Scholar" | "Sage" | "Master" | "Legend")
-    : playerTitle;
+  return translateLevelTitle(tTitles, playerTitle);
 }
 
 export function AppShell({

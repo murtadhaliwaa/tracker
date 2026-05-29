@@ -240,15 +240,17 @@ export function ProfileClient(props: Props) {
         </div>
       </RPGCard>
 
-      <ProfileEditDialog
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        name={props.name}
-        avatarStyle={props.avatarStyle}
-        level={props.level}
-        title={props.title}
-        onSaved={() => router.refresh()}
-      />
+      {editOpen ? (
+        <ProfileEditDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          name={props.name}
+          avatarStyle={props.avatarStyle}
+          level={props.level}
+          characterTitle={props.title}
+          onSaved={() => router.refresh()}
+        />
+      ) : null}
     </div>
   );
 }
