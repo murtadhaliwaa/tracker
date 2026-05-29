@@ -40,6 +40,7 @@ export default async function ProtectedLayout({
       xpToNextLevel={profile?.xpToNextLevel ?? 500}
       avatarStyle={profile?.avatarStyle ?? null}
       streakDays={overallStreak?.currentStreak ?? 0}
+      freezesAvailable={overallStreak?.freezesAvailable ?? 0}
     >
       {children}
     </AppShell>

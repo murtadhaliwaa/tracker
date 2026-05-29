@@ -7,6 +7,15 @@ import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { PlayerCard } from "@/components/gamification/player-card";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   BarChart3,
   BookOpen,
   Brain,
@@ -56,6 +65,7 @@ export function AppShell({
   xpToNextLevel,
   avatarStyle,
   streakDays,
+  freezesAvailable,
 }: {
   children: React.ReactNode;
   playerName: string | null;
@@ -65,6 +75,7 @@ export function AppShell({
   xpToNextLevel: number;
   avatarStyle?: string | null;
   streakDays: number;
+  freezesAvailable: number;
 }) {
   const t = useTranslations("nav");
   const ts = useTranslations("shell");
@@ -72,6 +83,7 @@ export function AppShell({
   const pathname = usePathname();
   const isAr = locale === "ar";
   const [menuOpen, setMenuOpen] = useState(false);
+  const [streakInfoOpen, setStreakInfoOpen] = useState(false);
 
   const displayTitle = useDisplayTitle(playerTitle);
 
@@ -119,6 +131,25 @@ export function AppShell({
         : "rounded-lg text-[#888899] hover:bg-white/[0.03] hover:text-rpg-text",
     );
 
+  const streakBadgeClass =
+    "flex items-center gap-1 rounded-full border border-rpg-border bg-rpg-card transition hover:border-rpg-gold/40 hover:bg-rpg-gold/5 active:scale-95";
+
+  const streakBadge = (compact = false) => (
+    <button
+      type="button"
+      aria-label={ts("streakBadgeTitle")}
+      onClick={() => setStreakInfoOpen(true)}
+      className={cn(streakBadgeClass, compact ? "px-2 py-1" : "px-3 py-2")}
+    >
+      <Shield className={cn("shrink-0 text-rpg-gold", compact ? "size-3.5" : "size-4")} />
+      {compact ? (
+        <span className="text-[10px] font-medium text-rpg-gold">{streakDays}</span>
+      ) : (
+        <p className="text-xs font-medium text-rpg-gold">{ts("streakCount", { count: streakDays })}</p>
+      )}
+    </button>
+  );
+
   const sidebarContent = (onNavigate?: () => void) => (
     <>
       <p
@@ -159,12 +190,7 @@ export function AppShell({
         })}
       </nav>
 
-      <div className="mt-auto pt-5">
-        <div className="flex items-center gap-2 rounded-full border border-rpg-border bg-rpg-card px-3 py-2">
-          <Shield className="size-4 shrink-0 text-rpg-gold" />
-          <p className="text-xs font-medium text-rpg-gold">{ts("streakCount", { count: streakDays })}</p>
-        </div>
-      </div>
+      <div className="mt-auto pt-5">{streakBadge()}</div>
     </>
   );
 
@@ -191,10 +217,7 @@ export function AppShell({
           LIFE RPG
         </p>
 
-        <div className="flex items-center gap-1 rounded-full border border-rpg-border bg-rpg-card px-2 py-1">
-          <Shield className="size-3.5 text-rpg-gold" />
-          <span className="text-[10px] font-medium text-rpg-gold">{streakDays}</span>
-        </div>
+        {streakBadge(true)}
       </header>
 
       {/* Mobile slide-out menu */}
@@ -280,6 +303,29 @@ export function AppShell({
           })}
         </div>
       </nav>
+
+      <AlertDialog open={streakInfoOpen} onOpenChange={setStreakInfoOpen}>
+        <AlertDialogContent className="border-rpg-border bg-rpg-card sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-rpg-gold">
+              <Shield className="size-5" />
+              {ts("streakBadgeTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 text-rpg-secondary">
+              <span className="block">{ts("streakBadgeDescription")}</span>
+              <span className="block">{ts("streakBadgeBenefit", { count: freezesAvailable })}</span>
+              <span className="block text-sm text-rpg-gold">
+                {ts("streakCount", { count: streakDays })}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction className="bg-rpg-gold text-[#0a0a0f] hover:bg-rpg-gold/90">
+              {ts("streakBadgeGotIt")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

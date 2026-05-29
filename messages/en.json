@@ -46,7 +46,11 @@
     "switchToEnglish": "English",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
-    "mobileNav": "Main navigation"
+    "mobileNav": "Main navigation",
+    "streakBadgeTitle": "Streak Shield",
+    "streakBadgeDescription": "This shield shows your overall streak — how many days in a row you kept playing and completing habits.",
+    "streakBadgeBenefit": "A longer streak keeps your momentum, helps you level up faster, and protects your RPG progress. You currently have {count} streak freeze(s): use one to skip a day without resetting your streak.",
+    "streakBadgeGotIt": "Got it"
   },
   "pwa": {
     "install": "Install",
