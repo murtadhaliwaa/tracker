@@ -50,7 +50,7 @@ import {
 import { LevelUpModal } from "@/components/shared/level-up-modal";
 import { PerfectDayBanner } from "@/components/shared/perfect-day-banner";
 import { HabitFormDialog, type HabitFormValues } from "@/components/habits/habit-form-dialog";
-import { habitIconDisplay, type HabitFrequency } from "@/lib/habit-display";
+import { habitIconDisplay, habitAccentColor, type HabitFrequency } from "@/lib/habit-display";
 import {
   archiveHabit,
   deleteHabit,
@@ -143,6 +143,7 @@ function HabitTimer({ onComplete }: { habitId: string; logType: "TIMER"; onCompl
 
 function SortableHabitRow({
   habit,
+  accentContext,
   archived,
   onEdit,
   onDelete,
@@ -151,6 +152,7 @@ function SortableHabitRow({
   onComplete,
 }: {
   habit: HabitClientItem;
+  accentContext: { id: string; color: string }[];
   archived: boolean;
   onEdit: () => void;
   onDelete: () => void;
@@ -170,7 +172,12 @@ function SortableHabitRow({
     <>
       <div
         ref={setNodeRef}
-        style={{ ...style, borderLeftColor: habit.color }}
+        style={{
+          ...style,
+          borderLeftWidth: 4,
+          borderLeftStyle: "solid",
+          borderLeftColor: habitAccentColor(accentContext, habit.id),
+        }}
         className="flex items-center justify-between gap-3 rounded-lg border border-[#1e1e3a] bg-[#0f0f1a] px-3 py-2"
       >
         <div className="flex min-w-0 items-center gap-2">
@@ -403,6 +410,7 @@ export function HabitsClient({ habits: initialHabits, categories }: Props) {
                     <SortableHabitRow
                       key={habit.id}
                       habit={habit}
+                      accentContext={items}
                       archived={period === "ARCHIVED"}
                       onEdit={() => {
                         const freq = parseFrequency(habit.frequency);

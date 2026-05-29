@@ -37,7 +37,7 @@ import BorderGlow from "@/components/BorderGlow";
 import { RPG_BORDER_GLOW } from "@/components/react-bits/rpg-theme";
 import { DashboardMagicBento } from "@/components/dashboard/dashboard-magic-bento";
 import { OnboardingModal } from "@/components/onboarding/onboarding-modal";
-import { habitIconDisplay } from "@/lib/habit-display";
+import { habitIconDisplay, habitAccentColor } from "@/lib/habit-display";
 import { logHabit } from "@/app/[locale]/(protected)/habits/actions";
 import { getMissedHabitsYesterday, useStreakFreeze as activateStreakFreeze } from "@/app/[locale]/(protected)/dashboard/actions";
 
@@ -283,7 +283,11 @@ export function DashboardClient(props: Props) {
                       completed && "rpg-habit-row-completed",
                       animating && "habit-card-flash",
                     )}
-                    style={{ borderLeftWidth: 4, borderLeftStyle: "solid", borderLeftColor: "#7C3AED" }}
+                    style={{
+                      borderLeftWidth: 4,
+                      borderLeftStyle: "solid",
+                      borderLeftColor: habitAccentColor(props.dailyHabits, habit.id),
+                    }}
                   >
                     {floatXp?.id === habit.id ? (
                       <span className="habit-xp-float pointer-events-none absolute end-20 top-2 z-10 text-xs font-bold text-rpg-gold">
