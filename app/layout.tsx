@@ -1,23 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { Cinzel, Inter, Cairo } from "next/font/google";
+import { Cinzel, Inter } from "next/font/google";
 import { PreloadCleanup } from "@/components/preload-cleanup";
 import "./globals.css";
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
+  preload: true,
 });
 
 const cinzel = Cinzel({
   variable: "--font-cinzel",
   subsets: ["latin"],
   weight: ["600", "700"],
-});
-
-const cairo = Cairo({
-  variable: "--font-arabic",
-  subsets: ["arabic"],
-  weight: ["400", "600", "700"],
+  display: "swap",
+  preload: true,
 });
 
 export const metadata: Metadata = {
@@ -67,10 +65,32 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${cinzel.variable} ${cairo.variable} dark h-full antialiased`}
+      className={`${inter.variable} ${cinzel.variable} dark h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        <div
+          id="app-boot-splash"
+          aria-hidden
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#0a0a0f",
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icons/icon-192.png"
+            alt=""
+            width={96}
+            height={96}
+            style={{ borderRadius: 16 }}
+          />
+        </div>
         <PreloadCleanup />
         {children}
       </body>

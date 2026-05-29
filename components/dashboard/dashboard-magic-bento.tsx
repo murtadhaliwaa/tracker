@@ -1,11 +1,23 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useMemo } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import MagicBento, { type BentoCardProps } from "@/components/MagicBento";
+import type { BentoCardProps } from "@/components/MagicBento";
 import { XpProgressBar } from "@/components/gamification/player-card";
 import { Button } from "@/components/ui/button";
+
+const MagicBento = dynamic(() => import("@/components/MagicBento"), {
+  ssr: false,
+  loading: () => (
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="aspect-[4/3] min-h-[160px] animate-pulse rounded-xl bg-[#1a1a2e]/70" />
+      ))}
+    </div>
+  ),
+});
 
 const SURFACE = "#1a1a2e";
 

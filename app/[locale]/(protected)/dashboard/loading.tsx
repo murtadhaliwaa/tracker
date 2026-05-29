@@ -1,5 +1,5 @@
-import { PageLoading } from "@/components/ui/page-loading";
+import { AppShellPageSkeleton } from "@/components/gamification/app-shell-skeleton";
 
 export default function DashboardLoading() {
-  return <PageLoading variant="dashboard" />;
+  return <AppShellPageSkeleton variant="dashboard" />;
 }
