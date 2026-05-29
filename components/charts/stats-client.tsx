@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { format, startOfWeek, subWeeks } from "date-fns";
+import { Info } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -18,11 +19,26 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { RPGCard } from "@/components/ui/rpg-card";
 import { RPGPageHeader } from "@/components/ui/rpg-page-header";
 import { ActivityHeatmap, type HeatmapDay } from "@/components/charts/activity-heatmap";
 import { ChartContainer } from "@/components/charts/chart-container";
 import { GhostLeagueChart } from "@/components/charts/ghost-league-chart";
+import type { LifeBalanceDimension } from "@/lib/life-balance-radar";
+import {
+  buildStatInsight,
+  getStatInsightTitle,
+  type StatInfoKey,
+} from "@/lib/stats-insights";
 
 type GhostLeague = {
   thisWeekXp: number;
@@ -33,7 +49,7 @@ type GhostLeague = {
 
 type Props = {
   weeklyXp: { name: string; xp: number }[];
-  radar: { subject: string; value: number }[];
+  radar: { subject: LifeBalanceDimension; value: number }[];
   meditationTrend: { week: string; minutes: number }[];
   heatmapDays: HeatmapDay[];
   ghostLeague: GhostLeague;
@@ -65,9 +81,43 @@ const CHART_TICK = "#666688";
 
 const barChartMargin = { top: 10, right: 16, left: 0, bottom: 5 };
 
+function StatSectionHeading({
+  title,
+  infoKey,
+  subtitle,
+  onInfoClick,
+  className,
+}: {
+  title: string;
+  infoKey: StatInfoKey;
+  subtitle?: string;
+  onInfoClick: (key: StatInfoKey) => void;
+  className?: string;
+}) {
+  const t = useTranslations("stats");
+
+  return (
+    <div className={className}>
+      <div className="flex items-center gap-2">
+        <h2 className="rpg-section-heading text-rpg-gold">{title}</h2>
+        <button
+          type="button"
+          aria-label={t("infoAriaLabel", { section: title })}
+          onClick={() => onInfoClick(infoKey)}
+          className="flex size-7 shrink-0 items-center justify-center rounded-full border border-rpg-gold/30 text-rpg-gold/80 transition hover:border-rpg-gold/60 hover:bg-rpg-gold/10 hover:text-rpg-gold"
+        >
+          <Info className="size-3.5" />
+        </button>
+      </div>
+      {subtitle ? <p className="mt-1 text-sm text-rpg-secondary">{subtitle}</p> : null}
+    </div>
+  );
+}
+
 export function StatsClient({ weeklyXp, radar, meditationTrend: initialTrend, heatmapDays, ghostLeague }: Props) {
   const t = useTranslations("stats");
   const [meditationTrend, setMeditationTrend] = useState(initialTrend);
+  const [infoKey, setInfoKey] = useState<StatInfoKey | null>(null);
 
   useEffect(() => {
     fetch("/api/mind/meditation")
@@ -84,6 +134,10 @@ export function StatsClient({ weeklyXp, radar, meditationTrend: initialTrend, he
 
   const weeklyMaxXp = Math.max(...weeklyXp.map((item) => item.xp), 1);
   const meditationMax = Math.max(...meditationTrend.map((item) => item.minutes), 1);
+  const radarChartData = radar.map((item) => ({
+    ...item,
+    subject: t(`lifeBalanceDimensions.${item.subject}`),
+  }));
 
   const badgeClass =
     ghostLeague.status === "ahead"
@@ -92,13 +146,28 @@ export function StatsClient({ weeklyXp, radar, meditationTrend: initialTrend, he
         ? "border-rpg-border bg-rpg-muted/10 text-rpg-muted"
         : "border-[rgba(212,175,55,0.3)] bg-[rgba(212,175,55,0.15)] text-rpg-gold";
 
+  const insightContent = infoKey
+    ? buildStatInsight(infoKey, t, {
+        weeklyXp,
+        radar,
+        ghostLeague,
+        meditationTrend,
+        heatmapDays,
+      })
+    : null;
+
   return (
     <div className="min-w-0 max-w-full space-y-10 overflow-x-hidden">
       <RPGPageHeader title={t("title")} subtitle={t("subtitle")} />
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-2">
         <RPGCard className="min-w-0">
-          <h2 className="rpg-section-heading mb-3 text-rpg-gold">{t("weeklyXp")}</h2>
+          <StatSectionHeading
+            title={t("weeklyXp")}
+            infoKey="weeklyXp"
+            onInfoClick={setInfoKey}
+            className="mb-3"
+          />
           <ChartContainer height={180}>
             {({ width, height }) => (
               <BarChart
@@ -142,17 +211,22 @@ export function StatsClient({ weeklyXp, radar, meditationTrend: initialTrend, he
         </RPGCard>
 
         <RPGCard className="min-w-0">
-          <h2 className="rpg-section-heading mb-3 text-rpg-gold">{t("lifeBalance")}</h2>
-          <ChartContainer height={200} className="mx-auto max-w-[300px]">
+          <StatSectionHeading
+            title={t("lifeBalance")}
+            infoKey="lifeBalance"
+            onInfoClick={setInfoKey}
+            className="mb-3"
+          />
+          <ChartContainer height={220} className="mx-auto max-w-[340px]">
             {({ width, height }) => (
               <RadarChart
                 width={width}
                 height={height}
-                data={radar}
-                outerRadius={Math.min(width, height) * 0.32}
+                data={radarChartData}
+                outerRadius={Math.min(width, height) * 0.38}
               >
                 <PolarGrid stroke={CHART_GRID} />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: CHART_TICK, fontSize: 10 }} />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: CHART_TICK, fontSize: 9 }} />
                 <Radar
                   name="Life Balance"
                   dataKey="value"
@@ -170,7 +244,12 @@ export function StatsClient({ weeklyXp, radar, meditationTrend: initialTrend, he
       </div>
 
       <RPGCard className="min-w-0 w-full">
-        <h2 className="rpg-section-heading mb-3 text-rpg-gold">{t("ghostLeague")}</h2>
+        <StatSectionHeading
+          title={t("ghostLeague")}
+          infoKey="ghostLeague"
+          onInfoClick={setInfoKey}
+          className="mb-3"
+        />
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="rpg-stat-label text-rpg-muted">{t("thisWeek")}</p>
@@ -189,7 +268,12 @@ export function StatsClient({ weeklyXp, radar, meditationTrend: initialTrend, he
       </RPGCard>
 
       <RPGCard className="min-w-0">
-        <h2 className="rpg-section-heading mb-3 text-rpg-gold">{t("meditationTrend")}</h2>
+        <StatSectionHeading
+          title={t("meditationTrend")}
+          infoKey="meditationTrend"
+          onInfoClick={setInfoKey}
+          className="mb-3"
+        />
         <ChartContainer height={200}>
           {({ width, height }) => (
             <LineChart
@@ -235,10 +319,55 @@ export function StatsClient({ weeklyXp, radar, meditationTrend: initialTrend, he
       </RPGCard>
 
       <RPGCard className="min-w-0">
-        <h2 className="rpg-section-heading mb-1 text-rpg-gold">{t("activityHeatmap")}</h2>
-        <p className="mb-4 text-sm text-rpg-secondary">{t("heatmapSubtitle")}</p>
+        <StatSectionHeading
+          title={t("activityHeatmap")}
+          infoKey="activityHeatmap"
+          subtitle={t("heatmapSubtitle")}
+          onInfoClick={setInfoKey}
+          className="mb-4"
+        />
         <ActivityHeatmap days={heatmapDays} />
       </RPGCard>
+
+      <AlertDialog open={infoKey !== null} onOpenChange={(open) => !open && setInfoKey(null)}>
+        <AlertDialogContent className="border-rpg-border bg-rpg-card sm:max-w-lg">
+          {infoKey && insightContent ? (
+            <>
+              <AlertDialogHeader className="text-start sm:place-items-start">
+                <AlertDialogTitle className="flex items-center gap-2 text-rpg-gold">
+                  <Info className="size-5 shrink-0" />
+                  {getStatInsightTitle(infoKey, t)}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="space-y-4 text-start text-rpg-secondary">
+                  <span className="block space-y-1.5">
+                    <span className="block text-sm font-semibold text-rpg-gold/90">
+                      {t("insightDataHeading")}
+                    </span>
+                    <span className="block text-sm leading-relaxed">{insightContent.insight}</span>
+                  </span>
+                  <span className="block space-y-1.5">
+                    <span className="block text-sm font-semibold text-rpg-gold/90">
+                      {t("insightEncourageHeading")}
+                    </span>
+                    <span className="block text-sm leading-relaxed">{insightContent.encouragement}</span>
+                  </span>
+                  <span className="block space-y-1.5">
+                    <span className="block text-sm font-semibold text-rpg-gold/90">
+                      {t("insightActionHeading")}
+                    </span>
+                    <span className="block text-sm leading-relaxed">{insightContent.action}</span>
+                  </span>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogAction className="bg-rpg-gold text-[#0a0a0f] hover:bg-rpg-gold/90">
+                  {t("infoGotIt")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          ) : null}
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

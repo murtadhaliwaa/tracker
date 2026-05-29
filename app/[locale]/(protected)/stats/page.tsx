@@ -9,7 +9,8 @@ import {
 } from "date-fns";
 import { prisma } from "@/lib/prisma";
 import { getViewerContext } from "@/lib/viewer";
-import { ensureStatsHistory, sumXpBetween } from "@/lib/backfill-stats-data";
+import { ensureStatsHistory, ensureDefaultHabitCategories, sumXpBetween } from "@/lib/backfill-stats-data";
+import { buildLifeBalanceRadar } from "@/lib/life-balance-radar";
 import { PageLoading } from "@/components/ui/page-loading";
 
 const StatsClient = dynamic(
@@ -25,6 +26,7 @@ export default async function StatsPage() {
   if (!viewer) return <div className="text-sm text-foreground/70">No user context found.</div>;
 
   await ensureStatsHistory(viewer.userId);
+  await ensureDefaultHabitCategories(viewer.userId);
 
   const now = new Date();
   const fourWeeksAgo = startOfWeek(subWeeks(now, 3), { weekStartsOn: 1 });
@@ -43,7 +45,7 @@ export default async function StatsPage() {
     }),
     prisma.habit.findMany({
       where: { userId: viewer.userId, isArchived: false },
-      select: { id: true, categoryId: true },
+      select: { id: true, categoryId: true, category: true },
     }),
     prisma.habitLog.findMany({
       where: {
@@ -86,22 +88,8 @@ export default async function StatsPage() {
     };
   });
 
-  const logsByCategory = new Map<string, number>();
-  for (const log of recentLogs) {
-    const habit = habits.find((h) => h.id === log.habitId);
-    if (!habit?.categoryId) continue;
-    logsByCategory.set(habit.categoryId, (logsByCategory.get(habit.categoryId) ?? 0) + 1);
-  }
-
-  const rawRadarData = categories.map((category) => {
-    const totalLogs = logsByCategory.get(category.id) ?? 0;
-    const value = Math.max(0, Math.min(100, totalLogs * 12));
-    return { subject: category.name, value };
-  });
-  const radarData = rawRadarData.map((item) => ({
-    ...item,
-    value: item.value === 0 ? 30 : item.value,
-  }));
+  const rawRadarData = buildLifeBalanceRadar(habits, categories, recentLogs);
+  const radarData = rawRadarData;
 
   const meditationTrend = Array.from({ length: 4 }).map((_, i) => {
     const weekStart = startOfWeek(subWeeks(now, 3 - i), { weekStartsOn: 1 });

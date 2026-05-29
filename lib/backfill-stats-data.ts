@@ -7,8 +7,30 @@ import {
   subWeeks,
 } from "date-fns";
 import { prisma } from "@/lib/prisma";
+import { DEFAULT_LIFE_BALANCE_CATEGORIES } from "@/lib/life-balance-radar";
 
 const WEEKLY_XP_SAMPLES = [110, 85, 95, 70, 120, 55, 100, 90, 75, 130, 60, 45];
+
+export async function ensureDefaultHabitCategories(userId: string) {
+  const existing = await prisma.habitCategory.findMany({
+    where: { userId },
+    select: { name: true },
+  });
+  const existingNames = new Set(existing.map((category) => category.name.toLowerCase()));
+  const missing = DEFAULT_LIFE_BALANCE_CATEGORIES.filter(
+    (category) => !existingNames.has(category.name.toLowerCase()),
+  );
+
+  if (missing.length === 0) return;
+
+  await prisma.$transaction(
+    missing.map((category) =>
+      prisma.habitCategory.create({
+        data: { userId, name: category.name, color: category.color },
+      }),
+    ),
+  );
+}
 
 export async function ensureStatsHistory(userId: string) {
   const profile = await prisma.userProfile.findUnique({
@@ -46,20 +68,13 @@ export async function ensureStatsHistory(userId: string) {
   let categoryIds = categories.map((c) => c.id);
 
   if (categoryIds.length === 0) {
-    const created = await prisma.$transaction([
-      prisma.habitCategory.create({
-        data: { userId, name: "Mind", color: "#06b6d4" },
-      }),
-      prisma.habitCategory.create({
-        data: { userId, name: "Body", color: "#22c55e" },
-      }),
-      prisma.habitCategory.create({
-        data: { userId, name: "Knowledge", color: "#a78bfa" },
-      }),
-      prisma.habitCategory.create({
-        data: { userId, name: "Discipline", color: "#f59e0b" },
-      }),
-    ]);
+    const created = await prisma.$transaction(
+      DEFAULT_LIFE_BALANCE_CATEGORIES.map((category) =>
+        prisma.habitCategory.create({
+          data: { userId, name: category.name, color: category.color },
+        }),
+      ),
+    );
     categoryIds = created.map((c) => c.id);
 
     await Promise.all(
