@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { Flame, Check, Quote, Skull, Sparkles } from "lucide-react";
+import { Flame, Check, Quote, Skull, Sparkles, Loader2 } from "lucide-react";
 import { RPGEmptyState } from "@/components/ui/rpg-empty-state";
 import { RPGCard } from "@/components/ui/rpg-card";
 import { RPGPageHeader } from "@/components/ui/rpg-page-header";
@@ -83,6 +83,7 @@ export function DashboardClient(props: Props) {
   const [boss, setBoss] = useState(props.boss);
   const [freezeOpen, setFreezeOpen] = useState(false);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [missedHabits, setMissedHabits] = useState<{ id: string; title: string }[]>([]);
   const [formHabitId, setFormHabitId] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
@@ -199,6 +200,15 @@ export function DashboardClient(props: Props) {
     });
   };
 
+  const openRecoveryQuest = () => {
+    setRecoveryOpen(true);
+    setRecoveryLoading(true);
+    setMissedHabits([]);
+    void getMissedHabitsYesterday()
+      .then(setMissedHabits)
+      .finally(() => setRecoveryLoading(false));
+  };
+
   return (
     <div className="space-y-10">
       <OnboardingModal open={props.showOnboarding} />
@@ -244,11 +254,7 @@ export function DashboardClient(props: Props) {
           bossCurrent={boss.currentValue}
           bossTarget={boss.targetValue}
           onUseFreeze={() => setFreezeOpen(true)}
-          onRecoveryQuest={async () => {
-            const missed = await getMissedHabitsYesterday();
-            setMissedHabits(missed);
-            setRecoveryOpen(true);
-          }}
+          onRecoveryQuest={openRecoveryQuest}
           freezeDisabled={props.freezesAvailable <= 0 || pending}
           recoveryDisabled={pending}
           showRecoveryQuest={props.healthValue < props.maxHealth}
@@ -434,31 +440,48 @@ export function DashboardClient(props: Props) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog open={recoveryOpen} onOpenChange={setRecoveryOpen}>
+      <Dialog
+        open={recoveryOpen}
+        onOpenChange={(open) => {
+          setRecoveryOpen(open);
+          if (!open) {
+            setRecoveryLoading(false);
+            setMissedHabits([]);
+          }
+        }}
+      >
         <DialogContent className="border-rpg-border bg-rpg-card sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{t("recoveryTitle")}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-rpg-muted">{t("recoveryDescription")}</p>
           <div className="space-y-2">
-            {missedHabits.map((h) => (
-              <Button
-                key={h.id}
-                variant="outline"
-                className="w-full justify-start"
-                disabled={pending}
-                onClick={() => {
-                  const habit = props.dailyHabits.find((d) => d.id === h.id);
-                  if (habit) completeHabit(habit, undefined, true);
-                  setRecoveryOpen(false);
-                }}
-              >
-                {h.title}
-              </Button>
-            ))}
-            {missedHabits.length === 0 ? (
-              <p className="text-sm text-rpg-muted">{t("noMissedHabits")}</p>
-            ) : null}
+            {recoveryLoading ? (
+              <div className="flex items-center justify-center gap-2 py-6 text-sm text-rpg-muted">
+                <Loader2 className="size-4 animate-spin text-rpg-gold" />
+              </div>
+            ) : (
+              <>
+                {missedHabits.map((h) => (
+                  <Button
+                    key={h.id}
+                    variant="outline"
+                    className="w-full justify-start"
+                    disabled={pending}
+                    onClick={() => {
+                      const habit = props.dailyHabits.find((d) => d.id === h.id);
+                      if (habit) completeHabit(habit, undefined, true);
+                      setRecoveryOpen(false);
+                    }}
+                  >
+                    {h.title}
+                  </Button>
+                ))}
+                {missedHabits.length === 0 ? (
+                  <p className="text-sm text-rpg-muted">{t("noMissedHabits")}</p>
+                ) : null}
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
