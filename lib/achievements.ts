@@ -1,6 +1,9 @@
-import { startOfWeek, subWeeks } from "date-fns";
 import { prisma } from "@/lib/prisma";
-import { ACHIEVEMENT_DEFINITIONS } from "@/lib/achievement-engine";
+import {
+  ACHIEVEMENT_DEFINITIONS,
+  buildAchievementContext,
+  type AchievementContext,
+} from "@/lib/achievement-engine";
 
 export type AchievementDisplay = {
   id: string;
@@ -14,96 +17,79 @@ export type AchievementDisplay = {
 
 function progressForType(
   type: string,
-  ctx: {
-    maxStreak: number;
-    totalPages: number;
-    meditationCount: number;
-    weeklyStreak: number;
-    focusedMinutes: number;
-  },
+  ctx: AchievementContext,
 ): { current: number; target: number } | undefined {
   switch (type) {
+    case "first_step":
+      return { current: ctx.habitCompletions, target: 1 };
     case "streak_7":
       return { current: ctx.maxStreak, target: 7 };
     case "streak_30":
       return { current: ctx.maxStreak, target: 30 };
+    case "streak_100":
+      return { current: ctx.maxStreak, target: 100 };
+    case "habit_hero_50":
+      return { current: ctx.habitCompletions, target: 50 };
+    case "habit_legend_500":
+      return { current: ctx.habitCompletions, target: 500 };
+    case "perfect_day":
+      return { current: ctx.perfectDayCount, target: 1 };
+    case "perfect_days_5":
+      return { current: ctx.perfectDayCount, target: 5 };
+    case "pages_50":
+      return { current: ctx.totalPages, target: 50 };
     case "pages_500":
       return { current: ctx.totalPages, target: 500 };
+    case "pages_1000":
+      return { current: ctx.totalPages, target: 1000 };
+    case "meditation_5":
+      return { current: ctx.meditationCount, target: 5 };
     case "meditation_20":
       return { current: ctx.meditationCount, target: 20 };
+    case "meditation_50":
+      return { current: ctx.meditationCount, target: 50 };
+    case "calm_hour":
+      return { current: ctx.meditationMinutes, target: 60 };
+    case "scholar_3":
+      return { current: ctx.coursesCompleted, target: 3 };
+    case "first_reflection":
+      return { current: ctx.weeklyReviewCount, target: 1 };
     case "weekly_reviews_4":
       return { current: ctx.weeklyStreak, target: 4 };
+    case "journal_12":
+      return { current: ctx.weeklyReviewCount, target: 12 };
+    case "deep_work_1h":
+      return { current: ctx.focusedMinutes, target: 60 };
     case "deep_work_10h":
       return { current: ctx.focusedMinutes, target: 600 };
+    case "deep_work_50h":
+      return { current: ctx.focusedMinutes, target: 3000 };
+    case "xp_1000":
+      return { current: ctx.totalXp, target: 1000 };
+    case "xp_10000":
+      return { current: ctx.totalXp, target: 10000 };
+    case "level_5":
+      return { current: ctx.level, target: 5 };
+    case "level_10":
+      return { current: ctx.level, target: 10 };
+    case "boss_slayer":
+      return { current: ctx.bossWins, target: 1 };
     default:
       return undefined;
   }
 }
 
-function countConsecutiveWeeklyReviews(dates: Date[]): number {
-  if (dates.length === 0) return 0;
-  const sorted = [...dates].sort((a, b) => b.getTime() - a.getTime());
-  let streak = 1;
-  for (let i = 1; i < sorted.length; i++) {
-    const prevWeek = startOfWeek(sorted[i - 1]!, { weekStartsOn: 0 });
-    const expected = subWeeks(prevWeek, 1);
-    const currentWeek = startOfWeek(sorted[i]!, { weekStartsOn: 0 });
-    if (currentWeek.getTime() === expected.getTime()) {
-      streak++;
-    } else {
-      break;
-    }
-  }
-  return streak;
-}
-
 export async function getAchievementsForUser(userId: string): Promise<AchievementDisplay[]> {
-  const [dbAchievements, streaks, perfectDayCount, readingPages, meditationCount, courses, weeklyReviews, timerMinutes, deepMeditationMinutes] =
-    await Promise.all([
-      prisma.achievement.findMany({
-        where: { userId },
-        orderBy: { createdAt: "asc" },
-      }),
-      prisma.streak.findMany({ where: { userId, habitId: { not: null } } }),
-      prisma.xPTransaction.count({ where: { userId, reason: "perfect_day" } }),
-      prisma.readingSession.aggregate({
-        where: { userId },
-        _sum: { pagesRead: true },
-      }),
-      prisma.meditationSession.count({ where: { userId } }),
-      prisma.course.findMany({ where: { userId } }),
-      prisma.reflection.findMany({
-        where: { userId, type: "WEEKLY" },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.habitLog.aggregate({
-        where: { userId, duration: { not: null } },
-        _sum: { duration: true },
-      }),
-      prisma.meditationSession.aggregate({
-        where: { userId, focusMultiplierEarned: { gte: 1.5 } },
-        _sum: { duration: true },
-      }),
-    ]);
+  const [dbAchievements, ctx] = await Promise.all([
+    prisma.achievement.findMany({
+      where: { userId },
+      orderBy: { createdAt: "asc" },
+    }),
+    buildAchievementContext(userId),
+  ]);
 
   const dbByType = new Map(dbAchievements.filter((a) => a.type).map((a) => [a.type!, a]));
   const dbByTitle = new Map(dbAchievements.map((a) => [a.title.toLowerCase(), a]));
-
-  const maxStreak = Math.max(0, ...streaks.map((s) => Math.max(s.currentStreak, s.longestStreak)));
-  const totalPages = readingPages._sum.pagesRead ?? 0;
-  const courseComplete = courses.some((c) => c.totalLessons > 0 && c.completedLessons >= c.totalLessons);
-  const weeklyStreak = countConsecutiveWeeklyReviews(weeklyReviews.map((r) => r.createdAt));
-  const focusedMinutes = (timerMinutes._sum.duration ?? 0) + (deepMeditationMinutes._sum.duration ?? 0);
-
-  const ctx = {
-    maxStreak,
-    hasPerfectDay: perfectDayCount > 0,
-    totalPages,
-    meditationCount,
-    courseComplete,
-    weeklyStreak,
-    focusedMinutes,
-  };
 
   const computed = ACHIEVEMENT_DEFINITIONS.map((def) => {
     const db = dbByType.get(def.type) ?? dbByTitle.get(def.title.toLowerCase());

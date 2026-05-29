@@ -9,8 +9,6 @@ import { RPGCard } from "@/components/ui/rpg-card";
 import { RPGPageHeader } from "@/components/ui/rpg-page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
@@ -20,7 +18,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  createReward,
   deleteReward,
   disableNotification,
   enableNotification,
@@ -28,8 +25,10 @@ import {
   exportUserData,
   updateNotificationTime,
   updatePreferredLanguage,
-  updateReward,
 } from "@/app/[locale]/(protected)/settings/actions";
+import { formatTimeAmPm } from "@/lib/format-time";
+import { emptyRewardForm, type RewardFormValues } from "@/lib/reward-display";
+import { RewardFormDialog } from "@/components/settings/reward-form-dialog";
 
 type NotificationItem = {
   id: string;
@@ -55,13 +54,7 @@ type Props = {
   rewards: RewardItem[];
 };
 
-type RewardForm = {
-  id?: string;
-  title: string;
-  description: string;
-  xpCost: number;
-  emoji: string;
-};
+type RewardForm = RewardFormValues;
 
 export function SettingsClient({ preferredLanguage, totalXP, notifications, rewards }: Props) {
   const t = useTranslations("settings");
@@ -70,12 +63,7 @@ export function SettingsClient({ preferredLanguage, totalXP, notifications, rewa
   const pathname = usePathname();
   const [pending, startTransition] = useTransition();
   const [rewardOpen, setRewardOpen] = useState(false);
-  const [rewardForm, setRewardForm] = useState<RewardForm>({
-    title: "",
-    description: "",
-    xpCost: 100,
-    emoji: "🎁",
-  });
+  const [rewardInitial, setRewardInitial] = useState<RewardForm | null>(null);
   const [timeEdit, setTimeEdit] = useState<{ id: string; time: string } | null>(null);
 
   const switchLanguage = () => {
@@ -151,28 +139,39 @@ export function SettingsClient({ preferredLanguage, totalXP, notifications, rewa
         <h2 className="font-heading text-lg text-rpg-heading">{t("notifications")}</h2>
         <div className="mt-4 space-y-3">
           {notifications.map((n) => (
-            <div key={n.id} className="flex items-center justify-between gap-4 rounded-lg border border-[#1e1e3a] bg-[#0f0f1a] p-3">
-              <div className="min-w-0">
-                <p className="truncate font-sans text-sm text-rpg-text" dir="auto">
+            <div
+              key={n.id}
+              dir="ltr"
+              className="flex items-center gap-3 rounded-lg border border-[#1e1e3a] bg-[#0f0f1a] p-3"
+            >
+              <div className="min-w-0 flex-1 text-left">
+                <p className="truncate text-left font-sans text-sm text-rpg-text" dir="auto">
                   {n.habitTitle}
                 </p>
-                <p className="text-xs text-rpg-secondary">{n.time}</p>
+                <p className="text-left text-xs text-rpg-secondary">{formatTimeAmPm(n.time)}</p>
               </div>
-              <Switch
-                checked={n.isEnabled}
-                disabled={pending}
-                onCheckedChange={(checked) =>
-                  startTransition(async () => {
-                    if (checked) await enableNotification({ id: n.id, enabled: true });
-                    else await disableNotification({ id: n.id, enabled: false });
-                    toast.success(t("notificationUpdated"));
-                    router.refresh();
-                  })
-                }
-              />
-              <button type="button" onClick={() => setTimeEdit({ id: n.id, time: n.time })}>
-                <Bell className={`size-4 ${n.isEnabled ? "text-rpg-teal" : "text-rpg-secondary"}`} />
-              </button>
+              <div className="flex shrink-0 items-center gap-3">
+                <Switch
+                  checked={n.isEnabled}
+                  disabled={pending}
+                  onCheckedChange={(checked) =>
+                    startTransition(async () => {
+                      if (checked) await enableNotification({ id: n.id, enabled: true });
+                      else await disableNotification({ id: n.id, enabled: false });
+                      toast.success(t("notificationUpdated"));
+                      router.refresh();
+                    })
+                  }
+                />
+                <button
+                  type="button"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-[#1e1e3a]"
+                  onClick={() => setTimeEdit({ id: n.id, time: n.time })}
+                  aria-label={t("editReminderTime")}
+                >
+                  <Bell className={`size-4 ${n.isEnabled ? "text-rpg-teal" : "text-rpg-secondary"}`} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -186,7 +185,7 @@ export function SettingsClient({ preferredLanguage, totalXP, notifications, rewa
             variant="outline"
             className="border-[#f0c040] text-[#f0c040]"
             onClick={() => {
-              setRewardForm({ title: "", description: "", xpCost: 100, emoji: "🎁" });
+              setRewardInitial({ ...emptyRewardForm });
               setRewardOpen(true);
             }}
           >
@@ -215,7 +214,7 @@ export function SettingsClient({ preferredLanguage, totalXP, notifications, rewa
                       size="icon-sm"
                       variant="ghost"
                       onClick={() => {
-                        setRewardForm({
+                        setRewardInitial({
                           id: r.id,
                           title: r.title,
                           description: r.description ?? "",
@@ -337,36 +336,12 @@ export function SettingsClient({ preferredLanguage, totalXP, notifications, rewa
         </div>
       </RPGCard>
 
-      <Dialog open={rewardOpen} onOpenChange={setRewardOpen}>
-        <DialogContent className="border-[#1e1e3a] bg-[#0f0f1a] sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{rewardForm.id ? t("editReward") : t("addReward")}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div><Label>{t("rewardTitle")}</Label><Input value={rewardForm.title} onChange={(e) => setRewardForm({ ...rewardForm, title: e.target.value })} /></div>
-            <div><Label>{t("rewardDescription")}</Label><Textarea value={rewardForm.description} onChange={(e) => setRewardForm({ ...rewardForm, description: e.target.value })} /></div>
-            <div><Label>{t("xpCostLabel")}</Label><Input type="number" min={1} value={rewardForm.xpCost} onChange={(e) => setRewardForm({ ...rewardForm, xpCost: Number(e.target.value) })} /></div>
-            <div><Label>{t("emojiPicker")}</Label><Input value={rewardForm.emoji} onChange={(e) => setRewardForm({ ...rewardForm, emoji: e.target.value })} /></div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRewardOpen(false)}>{tc("cancel")}</Button>
-            <Button
-              disabled={pending || !rewardForm.title}
-              onClick={() =>
-                startTransition(async () => {
-                  if (rewardForm.id) await updateReward(rewardForm);
-                  else await createReward(rewardForm);
-                  toast.success(t("rewardSaved"));
-                  setRewardOpen(false);
-                  router.refresh();
-                })
-              }
-            >
-              {tc("save")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <RewardFormDialog
+        open={rewardOpen}
+        onOpenChange={setRewardOpen}
+        initial={rewardInitial}
+        onSaved={() => router.refresh()}
+      />
 
       <Dialog open={Boolean(timeEdit)} onOpenChange={() => setTimeEdit(null)}>
         <DialogContent className="border-[#1e1e3a] bg-[#0f0f1a] sm:max-w-sm">

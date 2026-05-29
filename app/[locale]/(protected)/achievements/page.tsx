@@ -12,11 +12,28 @@ import {
   Star,
   Sword,
   BookOpen,
+  BookMarked,
   Brain,
   GraduationCap,
   ScrollText,
   Zap,
   Crown,
+  Footprints,
+  Trophy,
+  Sparkles,
+  Moon,
+  Timer,
+  Sun,
+  Coins,
+  Gem,
+  TrendingUp,
+  Award,
+  Swords,
+  Target,
+  Medal,
+  CalendarCheck,
+  NotebookPen,
+  Library,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -26,10 +43,28 @@ const iconMap: Record<string, LucideIcon> = {
   Crown,
   Sword,
   BookOpen,
+  BookMarked,
   Brain,
   GraduationCap,
   ScrollText,
   Zap,
+  ShieldCheck,
+  Footprints,
+  Trophy,
+  Sparkles,
+  Moon,
+  Timer,
+  Sun,
+  Coins,
+  Gem,
+  TrendingUp,
+  Award,
+  Swords,
+  Target,
+  Medal,
+  CalendarCheck,
+  NotebookPen,
+  Library,
 };
 
 export default async function AchievementsPage() {
@@ -50,7 +85,7 @@ export default async function AchievementsPage() {
         </RPGCard>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {achievements.map((a) => {
           const locked = a.locked;
           const title = a.title.toLowerCase();

@@ -38,10 +38,15 @@ export function RPGPageHeader({ title, subtitle, action, className }: Props) {
     !ARABIC_RE.test(title);
 
   return (
-    <div className={cn("mb-8 flex items-start justify-between gap-4", className)}>
-      <div className="min-w-0">
+    <div
+      className={cn(
+        "mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-4",
+        className,
+      )}
+    >
+      <div className="min-w-0 flex-1">
         <div className="flex items-center gap-3">
-          <div className="rpg-header-accent relative h-0.5 w-14 bg-[rgba(212,175,55,0.35)]">
+          <div className="rpg-header-accent relative h-0.5 w-14 shrink-0 bg-[rgba(212,175,55,0.35)]">
             <span className="absolute -right-2 top-1/2 size-3.5 -translate-y-1/2 rotate-45 rounded-[2px] bg-rpg-gold shadow-[0_0_18px_rgba(212,175,55,0.35)]" />
           </div>
           {animateTitle ? (
@@ -56,9 +61,13 @@ export function RPGPageHeader({ title, subtitle, action, className }: Props) {
             <h1 className="rpg-page-title text-rpg-gold">{title}</h1>
           )}
         </div>
-        {subtitle ? <p className="rpg-page-subtitle text-rpg-muted">{subtitle}</p> : null}
+        {subtitle ? (
+          <p className="rpg-page-subtitle mt-3 max-w-md text-pretty text-rpg-muted">{subtitle}</p>
+        ) : null}
       </div>
-      {action ? <div className="shrink-0">{action}</div> : null}
+      {action ? (
+        <div className="w-full shrink-0 sm:w-auto [&>*]:w-full sm:[&>*]:w-auto">{action}</div>
+      ) : null}
     </div>
   );
 }

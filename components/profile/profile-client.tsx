@@ -3,7 +3,42 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Pencil, Flame, Star, Crown, Sword, BookOpen, Brain, GraduationCap, ScrollText, Zap, Shield, Skull, Wand2, Gem, Hammer, Pickaxe, type LucideIcon } from "lucide-react";
+import {
+  Pencil,
+  Flame,
+  Star,
+  Crown,
+  Sword,
+  BookOpen,
+  BookMarked,
+  Brain,
+  GraduationCap,
+  ScrollText,
+  Zap,
+  Shield,
+  ShieldCheck,
+  Skull,
+  Wand2,
+  Gem,
+  Hammer,
+  Pickaxe,
+  Footprints,
+  Trophy,
+  Sparkles,
+  Moon,
+  Timer,
+  Sun,
+  Coins,
+  TrendingUp,
+  Award,
+  Swords,
+  Target,
+  Medal,
+  CalendarCheck,
+  NotebookPen,
+  Library,
+  type LucideIcon,
+} from "lucide-react";
 import { RPGCard } from "@/components/ui/rpg-card";
 import { RPGPageHeader } from "@/components/ui/rpg-page-header";
 import { Button } from "@/components/ui/button";
@@ -65,10 +100,28 @@ const achievementIconMap: Record<string, LucideIcon> = {
   Crown,
   Sword,
   BookOpen,
+  BookMarked,
   Brain,
   GraduationCap,
   ScrollText,
   Zap,
+  ShieldCheck,
+  Footprints,
+  Trophy,
+  Sparkles,
+  Moon,
+  Timer,
+  Sun,
+  Coins,
+  Gem,
+  TrendingUp,
+  Award,
+  Swords,
+  Target,
+  Medal,
+  CalendarCheck,
+  NotebookPen,
+  Library,
 };
 
 type AchievementItem = {

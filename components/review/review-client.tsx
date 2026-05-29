@@ -189,8 +189,9 @@ export function ReviewClient({ reviews: initialReviews }: Props) {
               setOpen(true);
             }}
           >
-            <Plus className="size-4" />
-            {t("writeReview")}
+            <Plus className="size-4 shrink-0" />
+            <span className="sm:hidden">{t("writeReviewShort")}</span>
+            <span className="hidden sm:inline">{t("writeReview")}</span>
           </Button>
         }
       />
