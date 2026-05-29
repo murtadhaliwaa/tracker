@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Pencil, Flame, Star, Crown, Sword, BookOpen, Brain, GraduationCap, ScrollText, Zap } from "lucide-react";
+import { Pencil, Flame, Star, Crown, Sword, BookOpen, Brain, GraduationCap, ScrollText, Zap, Shield, Skull, Wand2, Gem, Hammer, Pickaxe, type LucideIcon } from "lucide-react";
 import { RPGCard } from "@/components/ui/rpg-card";
 import { RPGPageHeader } from "@/components/ui/rpg-page-header";
 import { Button } from "@/components/ui/button";
@@ -17,16 +17,47 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { XpProgressBar } from "@/components/gamification/player-card";
+import { PlayerAvatar } from "@/components/gamification/player-avatar";
 import { ActivityHeatmap, type HeatmapDay } from "@/components/charts/activity-heatmap";
+import { cn } from "@/lib/utils";
 import {
   AVATAR_COLOR_OPTIONS,
-  getAvatarBackground,
+  AVATAR_ICON_IDS,
   getPlayerDisplayName,
-  getPlayerInitials,
+  parseAvatarStyle,
+  serializeAvatarStyle,
+  type AvatarIconId,
 } from "@/lib/player-profile";
-import { cn } from "@/lib/utils";
-import type { LucideIcon } from "lucide-react";
 import { updateProfile, updateProfileName } from "@/app/[locale]/(protected)/profile/actions";
+
+function SpearIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path
+        d="M12 3v14M12 17l-2.5 4M12 17l2.5 4M9 7h6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+const avatarIconMap: Record<Exclude<AvatarIconId, "initials" | "spear">, LucideIcon> = {
+  sword: Sword,
+  shield: Shield,
+  crown: Crown,
+  flame: Flame,
+  skull: Skull,
+  wand: Wand2,
+  gem: Gem,
+  star: Star,
+  scroll: ScrollText,
+  axe: Pickaxe,
+  hammer: Hammer,
+  zap: Zap,
+};
 
 const achievementIconMap: Record<string, LucideIcon> = {
   Flame,
@@ -72,12 +103,13 @@ export function ProfileClient(props: Props) {
   const [editingName, setEditingName] = useState(false);
   const [inlineName, setInlineName] = useState(props.name ?? "");
   const [editOpen, setEditOpen] = useState(false);
+  const parsedAvatar = parseAvatarStyle(props.avatarStyle);
   const [formName, setFormName] = useState(props.name ?? "");
-  const [formAvatar, setFormAvatar] = useState(props.avatarStyle ?? AVATAR_COLOR_OPTIONS[0].id);
+  const [formColor, setFormColor] = useState(parsedAvatar.colorId);
+  const [formIcon, setFormIcon] = useState<AvatarIconId>(parsedAvatar.iconId);
 
   const displayName = getPlayerDisplayName(props.name, t("playerFallback"));
-  const initials = getPlayerInitials(props.name);
-  const avatarBackground = getAvatarBackground(props.avatarStyle);
+  const previewAvatarStyle = serializeAvatarStyle(formColor, formIcon);
 
   const saveInlineName = () => {
     startTransition(async () => {
@@ -93,12 +125,7 @@ export function ProfileClient(props: Props) {
 
       <RPGCard glow="gold" className="p-6">
         <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-          <div
-            className="flex size-20 shrink-0 items-center justify-center rounded-full text-xl font-bold text-[#0a0a0f]"
-            style={{ background: avatarBackground }}
-          >
-            {initials}
-          </div>
+          <PlayerAvatar name={props.name} avatarStyle={props.avatarStyle} size="md" />
 
           <div className="flex-1 space-y-3 text-center sm:text-start">
             {editingName ? (
@@ -145,8 +172,10 @@ export function ProfileClient(props: Props) {
             variant="outline"
             className="border-rpg-gold/40 text-rpg-gold"
             onClick={() => {
+              const parsed = parseAvatarStyle(props.avatarStyle);
               setFormName(props.name ?? "");
-              setFormAvatar(props.avatarStyle ?? AVATAR_COLOR_OPTIONS[0].id);
+              setFormColor(parsed.colorId);
+              setFormIcon(parsed.iconId);
               setEditOpen(true);
             }}
           >
@@ -224,6 +253,13 @@ export function ProfileClient(props: Props) {
             <DialogTitle>{t("editProfile")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="flex justify-center">
+              <PlayerAvatar
+                name={formName || displayName}
+                avatarStyle={previewAvatarStyle}
+                size="md"
+              />
+            </div>
             <div>
               <Label>{t("nameLabel")}</Label>
               <Input
@@ -234,20 +270,53 @@ export function ProfileClient(props: Props) {
             </div>
             <div>
               <Label>{t("avatarColor")}</Label>
-              <div className="mt-2 grid grid-cols-6 gap-2">
+              <div className="mt-2 grid grid-cols-5 gap-2 sm:grid-cols-6">
                 {AVATAR_COLOR_OPTIONS.map((color) => (
                   <button
                     key={color.id}
                     type="button"
-                    aria-label={color.id}
-                    onClick={() => setFormAvatar(color.id)}
+                    aria-label={t(`avatarColors.${color.id}`)}
+                    title={t(`avatarColors.${color.id}`)}
+                    onClick={() => setFormColor(color.id)}
                     className={cn(
-                      "size-10 rounded-full border-2 transition",
-                      formAvatar === color.id ? "border-[#f0c040]" : "border-transparent",
+                      "size-9 rounded-full border-2 transition sm:size-10",
+                      formColor === color.id ? "border-[#f0c040]" : "border-transparent",
                     )}
                     style={{ background: color.value }}
                   />
                 ))}
+              </div>
+            </div>
+            <div>
+              <Label>{t("avatarIcon")}</Label>
+              <div className="mt-2 grid grid-cols-5 gap-2 sm:grid-cols-7">
+                {AVATAR_ICON_IDS.map((iconId) => {
+                  const Icon =
+                    iconId === "spear"
+                      ? SpearIcon
+                      : iconId === "initials"
+                        ? null
+                        : avatarIconMap[iconId];
+                  return (
+                    <button
+                      key={iconId}
+                      type="button"
+                      aria-label={t(`avatarIcons.${iconId}`)}
+                      title={t(`avatarIcons.${iconId}`)}
+                      onClick={() => setFormIcon(iconId)}
+                      className={cn(
+                        "flex size-10 items-center justify-center rounded-lg border-2 bg-[#13131f] text-rpg-text transition",
+                        formIcon === iconId ? "border-[#f0c040]" : "border-[#1e1e3a]",
+                      )}
+                    >
+                      {iconId === "initials" ? (
+                        <span className="text-xs font-bold">Aa</span>
+                      ) : Icon ? (
+                        <Icon className="size-5" />
+                      ) : null}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -259,7 +328,12 @@ export function ProfileClient(props: Props) {
               disabled={pending || !formName.trim()}
               onClick={() =>
                 startTransition(async () => {
-                  await updateProfile({ name: formName.trim(), avatarStyle: formAvatar });
+                  await updateProfile({
+                    name: formName.trim(),
+                    avatarColor: formColor,
+                    avatarIcon: formIcon,
+                    avatarStyle: previewAvatarStyle,
+                  });
                   setEditOpen(false);
                   router.refresh();
                 })

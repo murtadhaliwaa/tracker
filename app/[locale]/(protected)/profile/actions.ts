@@ -4,11 +4,13 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireViewer } from "@/lib/action-utils";
-import { AVATAR_COLOR_OPTIONS } from "@/lib/player-profile";
+import { isValidAvatarStyle, serializeAvatarStyle } from "@/lib/player-profile";
 
 const profileSchema = z.object({
   name: z.string().trim().min(1).max(60),
   avatarStyle: z.string().min(1),
+  avatarColor: z.string().min(1).optional(),
+  avatarIcon: z.string().min(1).optional(),
 });
 
 function revalidateProfilePaths() {
@@ -22,16 +24,18 @@ export async function updateProfile(input: unknown) {
   const viewer = await requireViewer();
   const parsed = profileSchema.parse(input);
 
-  const validStyle = AVATAR_COLOR_OPTIONS.some(
-    (c) => c.id === parsed.avatarStyle || c.value === parsed.avatarStyle,
-  );
-  if (!validStyle) throw new Error("Invalid avatar color");
+  const avatarStyle =
+    parsed.avatarColor && parsed.avatarIcon
+      ? serializeAvatarStyle(parsed.avatarColor, parsed.avatarIcon)
+      : parsed.avatarStyle;
+
+  if (!isValidAvatarStyle(avatarStyle)) throw new Error("Invalid avatar style");
 
   await prisma.userProfile.update({
     where: { userId: viewer.userId },
     data: {
       name: parsed.name,
-      avatarStyle: parsed.avatarStyle,
+      avatarStyle,
     },
   });
 

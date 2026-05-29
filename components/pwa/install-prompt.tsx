@@ -37,6 +37,10 @@ function dismissForAWhile() {
   localStorage.setItem(DISMISS_KEY, String(Date.now() + DISMISS_DAYS * 86400000));
 }
 
+function isLocalDevHost(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+}
+
 export function PwaInstallPrompt() {
   const t = useTranslations("pwa");
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -46,6 +50,18 @@ export function PwaInstallPrompt() {
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
+
+    const { hostname } = window.location;
+    if (isLocalDevHost(hostname)) {
+      // Next.js dev + service workers conflict (RSC/HMR fetches fail). Clear any stale SW.
+      void navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          void registration.unregister();
+        }
+      });
+      return;
+    }
+
     void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => undefined);
   }, []);
 

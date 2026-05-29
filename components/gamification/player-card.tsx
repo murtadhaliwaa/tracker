@@ -1,7 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { getAvatarBackground, getPlayerDisplayName, getPlayerInitials } from "@/lib/player-profile";
+import { PlayerAvatar } from "@/components/gamification/player-avatar";
+import { getPlayerDisplayName } from "@/lib/player-profile";
 
 type XpProgressBarProps = {
   currentXP: number;
@@ -44,8 +45,6 @@ export function PlayerCard({
   nameFallback = "Player",
 }: PlayerCardProps) {
   const displayName = getPlayerDisplayName(playerName, nameFallback);
-  const initials = getPlayerInitials(playerName);
-  const avatarBackground = getAvatarBackground(avatarStyle);
   const fillPercent = Math.max(
     (currentXP / (xpToNextLevel > 0 ? xpToNextLevel : 1)) * 100,
     1.5,
@@ -56,12 +55,7 @@ export function PlayerCard({
       <div
         className={cn("flex items-center gap-2.5", isRtl && "flex-row-reverse")}
       >
-        <div
-          className="rpg-avatar-ring flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-[#0a0a0f]"
-          style={{ background: avatarBackground }}
-        >
-          {initials}
-        </div>
+        <PlayerAvatar name={playerName} avatarStyle={avatarStyle} size="sm" ring />
 
         <div className={cn("min-w-0 flex-1 overflow-hidden", isRtl && "text-right")}>
           <p className="truncate text-[13px] font-semibold text-rpg-text">{displayName}</p>

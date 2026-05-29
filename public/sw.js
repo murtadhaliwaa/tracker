@@ -1,4 +1,4 @@
-const CACHE = "life-rpg-shell-v4";
+const CACHE = "life-rpg-shell-v5";
 const ASSETS = [
   "/icons/favicon-32.png",
   "/icons/icon-192.png",
@@ -21,39 +21,28 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-function isNavigation(request) {
-  return request.mode === "navigate" || request.headers.get("accept")?.includes("text/html");
-}
-
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  if (isNavigation(event.request)) {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match("/icons/icon-192.png")),
-    );
-    return;
-  }
+  // Cache PWA icons only — never intercept Next.js pages, RSC, or API requests.
+  if (!url.pathname.startsWith("/icons/")) return;
 
-  if (url.pathname.startsWith("/icons/")) {
-    event.respondWith(
-      caches.match(event.request).then(
-        (cached) =>
-          cached ||
-          fetch(event.request).then((response) => {
+  event.respondWith(
+    caches.match(event.request).then(
+      (cached) =>
+        cached ||
+        fetch(event.request)
+          .then((response) => {
             if (response.ok) {
               const copy = response.clone();
               caches.open(CACHE).then((cache) => cache.put(event.request, copy));
             }
             return response;
-          }),
-      ),
-    );
-    return;
-  }
-
-  event.respondWith(fetch(event.request));
+          })
+          .catch(() => caches.match("/icons/icon-192.png")),
+    ),
+  );
 });
