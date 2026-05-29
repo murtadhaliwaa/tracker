@@ -10,6 +10,7 @@
     "postinstall": "prisma generate",
     "icons:generate": "node scripts/generate-pwa-icons.mjs",
     "db:seed": "prisma db seed",
+    "db:clear": "node scripts/clear-all-data.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio"

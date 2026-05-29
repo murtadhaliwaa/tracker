@@ -15,13 +15,7 @@ import {
   GraduationCap,
   ScrollText,
   Zap,
-  Shield,
   ShieldCheck,
-  Skull,
-  Wand2,
-  Gem,
-  Hammer,
-  Pickaxe,
   Footprints,
   Trophy,
   Sparkles,
@@ -29,6 +23,7 @@ import {
   Timer,
   Sun,
   Coins,
+  Gem,
   TrendingUp,
   Award,
   Swords,
@@ -43,56 +38,12 @@ import { RPGCard } from "@/components/ui/rpg-card";
 import { RPGPageHeader } from "@/components/ui/rpg-page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { XpProgressBar } from "@/components/gamification/player-card";
 import { PlayerAvatar } from "@/components/gamification/player-avatar";
 import { ActivityHeatmap, type HeatmapDay } from "@/components/charts/activity-heatmap";
-import { cn } from "@/lib/utils";
-import {
-  AVATAR_COLOR_OPTIONS,
-  AVATAR_ICON_IDS,
-  getPlayerDisplayName,
-  parseAvatarStyle,
-  serializeAvatarStyle,
-  type AvatarIconId,
-} from "@/lib/player-profile";
-import { updateProfile, updateProfileName } from "@/app/[locale]/(protected)/profile/actions";
-
-function SpearIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-      <path
-        d="M12 3v14M12 17l-2.5 4M12 17l2.5 4M9 7h6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-const avatarIconMap: Record<Exclude<AvatarIconId, "initials" | "spear">, LucideIcon> = {
-  sword: Sword,
-  shield: Shield,
-  crown: Crown,
-  flame: Flame,
-  skull: Skull,
-  wand: Wand2,
-  gem: Gem,
-  star: Star,
-  scroll: ScrollText,
-  axe: Pickaxe,
-  hammer: Hammer,
-  zap: Zap,
-};
+import { getPlayerDisplayName } from "@/lib/player-profile";
+import { updateProfileName } from "@/app/[locale]/(protected)/profile/actions";
+import { ProfileEditDialog } from "@/components/profile/profile-edit-dialog";
 
 const achievementIconMap: Record<string, LucideIcon> = {
   Flame,
@@ -156,13 +107,8 @@ export function ProfileClient(props: Props) {
   const [editingName, setEditingName] = useState(false);
   const [inlineName, setInlineName] = useState(props.name ?? "");
   const [editOpen, setEditOpen] = useState(false);
-  const parsedAvatar = parseAvatarStyle(props.avatarStyle);
-  const [formName, setFormName] = useState(props.name ?? "");
-  const [formColor, setFormColor] = useState(parsedAvatar.colorId);
-  const [formIcon, setFormIcon] = useState<AvatarIconId>(parsedAvatar.iconId);
 
   const displayName = getPlayerDisplayName(props.name, t("playerFallback"));
-  const previewAvatarStyle = serializeAvatarStyle(formColor, formIcon);
 
   const saveInlineName = () => {
     startTransition(async () => {
@@ -224,13 +170,7 @@ export function ProfileClient(props: Props) {
           <Button
             variant="outline"
             className="border-rpg-gold/40 text-rpg-gold"
-            onClick={() => {
-              const parsed = parseAvatarStyle(props.avatarStyle);
-              setFormName(props.name ?? "");
-              setFormColor(parsed.colorId);
-              setFormIcon(parsed.iconId);
-              setEditOpen(true);
-            }}
+            onClick={() => setEditOpen(true)}
           >
             {t("editProfile")}
           </Button>
@@ -300,103 +240,15 @@ export function ProfileClient(props: Props) {
         </div>
       </RPGCard>
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="border-[#1e1e3a] bg-[#0f0f1a] sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("editProfile")}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="flex justify-center">
-              <PlayerAvatar
-                name={formName || displayName}
-                avatarStyle={previewAvatarStyle}
-                size="md"
-              />
-            </div>
-            <div>
-              <Label>{t("nameLabel")}</Label>
-              <Input
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                className="border-[#1e1e3a] bg-[#13131f]"
-              />
-            </div>
-            <div>
-              <Label>{t("avatarColor")}</Label>
-              <div className="mt-2 grid grid-cols-5 gap-2 sm:grid-cols-6">
-                {AVATAR_COLOR_OPTIONS.map((color) => (
-                  <button
-                    key={color.id}
-                    type="button"
-                    aria-label={t(`avatarColors.${color.id}`)}
-                    title={t(`avatarColors.${color.id}`)}
-                    onClick={() => setFormColor(color.id)}
-                    className={cn(
-                      "size-9 rounded-full border-2 transition sm:size-10",
-                      formColor === color.id ? "border-[#f0c040]" : "border-transparent",
-                    )}
-                    style={{ background: color.value }}
-                  />
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label>{t("avatarIcon")}</Label>
-              <div className="mt-2 grid grid-cols-5 gap-2 sm:grid-cols-7">
-                {AVATAR_ICON_IDS.map((iconId) => {
-                  const Icon =
-                    iconId === "spear"
-                      ? SpearIcon
-                      : iconId === "initials"
-                        ? null
-                        : avatarIconMap[iconId];
-                  return (
-                    <button
-                      key={iconId}
-                      type="button"
-                      aria-label={t(`avatarIcons.${iconId}`)}
-                      title={t(`avatarIcons.${iconId}`)}
-                      onClick={() => setFormIcon(iconId)}
-                      className={cn(
-                        "flex size-10 items-center justify-center rounded-lg border-2 bg-[#13131f] text-rpg-text transition",
-                        formIcon === iconId ? "border-[#f0c040]" : "border-[#1e1e3a]",
-                      )}
-                    >
-                      {iconId === "initials" ? (
-                        <span className="text-xs font-bold">Aa</span>
-                      ) : Icon ? (
-                        <Icon className="size-5" />
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>
-              {tc("cancel")}
-            </Button>
-            <Button
-              disabled={pending || !formName.trim()}
-              onClick={() =>
-                startTransition(async () => {
-                  await updateProfile({
-                    name: formName.trim(),
-                    avatarColor: formColor,
-                    avatarIcon: formIcon,
-                    avatarStyle: previewAvatarStyle,
-                  });
-                  setEditOpen(false);
-                  router.refresh();
-                })
-              }
-            >
-              {tc("save")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ProfileEditDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        name={props.name}
+        avatarStyle={props.avatarStyle}
+        level={props.level}
+        title={props.title}
+        onSaved={() => router.refresh()}
+      />
     </div>
   );
 }

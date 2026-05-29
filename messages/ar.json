@@ -586,6 +586,12 @@
     "characterTitle": "لقب الشخصية: {title}",
     "achievementsShowcase": "عرض الإنجازات",
     "activityHeatmap": "خريطة النشاط",
-    "heatmapSubtitle": "آخر 12 أسبوعاً من إكمال العادات"
+    "heatmapSubtitle": "آخر 12 أسبوعاً من إكمال العادات",
+    "sectionBasics": "أساسيات",
+    "sectionAppearance": "المظهر",
+    "previewPlaceholder": "اسم بطلك",
+    "namePlaceholder": "أدخل اسم اللاعب",
+    "profileSaved": "تم تحديث الملف الشخصي",
+    "saving": "جاري الحفظ..."
   }
 }

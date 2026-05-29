@@ -589,6 +589,12 @@
     "characterTitle": "Character Title: {title}",
     "achievementsShowcase": "Achievements Showcase",
     "activityHeatmap": "Activity Heatmap",
-    "heatmapSubtitle": "Last 12 weeks of habit completions"
+    "heatmapSubtitle": "Last 12 weeks of habit completions",
+    "sectionBasics": "Basics",
+    "sectionAppearance": "Appearance",
+    "previewPlaceholder": "Your hero name",
+    "namePlaceholder": "Enter your player name",
+    "profileSaved": "Profile updated",
+    "saving": "Saving..."
   }
 }
