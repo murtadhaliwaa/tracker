@@ -9,18 +9,13 @@ import { Pencil, Plus, Sparkles, Star } from "lucide-react";
 import { RPGCard } from "@/components/ui/rpg-card";
 import { RPGPageHeader } from "@/components/ui/rpg-page-header";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api-fetch";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { LevelUpModal } from "@/components/shared/level-up-modal";
+import {
+  WeeklyReviewDialog,
+  type ReviewFormValues,
+} from "@/components/review/weekly-review-dialog";
 
 type ReviewItem = {
   id: string;
@@ -30,23 +25,6 @@ type ReviewItem = {
   challengeFaced: string;
   lessonLearned: string;
   nextWeekGoal: string;
-};
-
-type ReviewForm = {
-  id?: string;
-  weekRating: number;
-  winOfWeek: string;
-  challengeFaced: string;
-  lessonLearned: string;
-  nextWeekGoal: string;
-};
-
-const emptyForm: ReviewForm = {
-  weekRating: 3,
-  winOfWeek: "",
-  challengeFaced: "",
-  lessonLearned: "",
-  nextWeekGoal: "",
 };
 
 type Props = {
@@ -109,10 +87,10 @@ export function ReviewClient({ reviews: initialReviews }: Props) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const [levelUp, setLevelUp] = useState<{ level: number; title: string } | null>(null);
-  const [form, setForm] = useState<ReviewForm>(emptyForm);
+  const [editForm, setEditForm] = useState<ReviewFormValues | null>(null);
 
   const openEdit = (review: ReviewItem) => {
-    setForm({
+    setEditForm({
       id: review.id,
       weekRating: review.weekRating,
       winOfWeek: review.winOfWeek,
@@ -130,8 +108,6 @@ export function ReviewClient({ reviews: initialReviews }: Props) {
     { key: "nextWeekGoal" as const, label: t("fields.nextWeekGoal") },
   ];
 
-  const isValid = fields.every((f) => form[f.key].trim().length > 0);
-
   const weekRangeLabel = (isoDate: string) => {
     const date = new Date(isoDate);
     const start = startOfWeek(date, { weekStartsOn: 1 });
@@ -139,7 +115,7 @@ export function ReviewClient({ reviews: initialReviews }: Props) {
     return `${format(start, "MMM d")} – ${format(end, "MMM d, yyyy")}`;
   };
 
-  const saveReview = () => {
+  const saveReview = (form: ReviewFormValues) => {
     startTransition(async () => {
       try {
         if (form.id) {
@@ -183,7 +159,7 @@ export function ReviewClient({ reviews: initialReviews }: Props) {
           if (result.leveledUp) setLevelUp({ level: result.newLevel, title: result.newTitle });
         }
         setOpen(false);
-        setForm(emptyForm);
+        setEditForm(null);
         router.refresh();
       } catch {
         toast.error(tc("error"));
@@ -209,7 +185,7 @@ export function ReviewClient({ reviews: initialReviews }: Props) {
             variant="outline"
             className="border-[#D4AF37] bg-transparent text-[#D4AF37] hover:bg-[rgba(212,175,55,0.1)]"
             onClick={() => {
-              setForm(emptyForm);
+              setEditForm(null);
               setOpen(true);
             }}
           >
@@ -263,44 +239,16 @@ export function ReviewClient({ reviews: initialReviews }: Props) {
         </div>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        {open ? (
-          <DialogContent className="max-h-[90vh] overflow-y-auto border-[#1e1e3a] bg-[#0f0f1a] sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{form.id ? t("editReview") : t("writeReview")}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div>
-                <Label>{t("fields.weekRating")}</Label>
-                <div className="mt-2">
-                  <StarRating
-                    value={form.weekRating}
-                    onChange={(v) => setForm({ ...form, weekRating: v })}
-                  />
-                </div>
-              </div>
-              {fields.map(({ key, label }) => (
-                <div key={key}>
-                  <Label>{label}</Label>
-                  <Textarea
-                    className="border-[#1e1e3a] bg-[#13131f]"
-                    value={form[key]}
-                    onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                  />
-                </div>
-              ))}
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                {tc("cancel")}
-              </Button>
-              <Button type="button" disabled={pending || !isValid} onClick={saveReview}>
-                {tc("save")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        ) : null}
-      </Dialog>
+      <WeeklyReviewDialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          if (!nextOpen) setEditForm(null);
+        }}
+        pending={pending}
+        initial={editForm}
+        onSubmit={saveReview}
+      />
     </div>
   );
 }

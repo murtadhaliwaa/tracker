@@ -314,6 +314,23 @@
     "updated": "Review updated",
     "edit": "Edit",
     "editReview": "Edit Review",
+    "sectionRating": "Week Rating",
+    "sectionReflection": "Reflection",
+    "sectionForward": "Looking Ahead",
+    "previewPlaceholder": "Your win of the week will appear here…",
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving...",
+    "ratingLabels": {
+      "1": "Tough week",
+      "2": "Below average",
+      "3": "Okay",
+      "4": "Good week",
+      "5": "Great week"
+    },
+    "placeholders": {
+      "lessonLearned": "What did this week teach you?"
+    },
     "fields": {
       "weekRating": "Week Rating",
       "winOfWeek": "Win of the Week",

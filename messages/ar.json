@@ -312,6 +312,23 @@
     "updated": "تم تحديث المراجعة",
     "edit": "تعديل",
     "editReview": "تعديل المراجعة",
+    "sectionRating": "تقييم الأسبوع",
+    "sectionReflection": "التأمل",
+    "sectionForward": "نحو الأمام",
+    "previewPlaceholder": "سيظهر إنجاز الأسبوع هنا…",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "saving": "جاري الحفظ...",
+    "ratingLabels": {
+      "1": "أسبوع صعب",
+      "2": "أقل من المتوسط",
+      "3": "مقبول",
+      "4": "أسبوع جيد",
+      "5": "أسبوع رائع"
+    },
+    "placeholders": {
+      "lessonLearned": "ماذا علّمك هذا الأسبوع؟"
+    },
     "fields": {
       "weekRating": "تقييم الأسبوع",
       "winOfWeek": "إنجاز الأسبوع",
