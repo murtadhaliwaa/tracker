@@ -37,6 +37,41 @@ export const COLOR_SWATCHES = [
   { name: "indigo", value: "#6366F1" },
 ] as const;
 
+export const HABIT_EMOJI_CATEGORIES = [
+  {
+    id: "rpg",
+    emojis: ["⚔️", "🛡️", "👑", "💎", "⭐", "🔮", "🗡️", "🏹", "🪓", "🔨", "🎯", "🔥", "✨", "🌟"],
+  },
+  {
+    id: "fitness",
+    emojis: ["🏋️", "💪", "🏃", "🚴", "🧘", "🥊", "⚽", "🏊", "🚶", "🤸", "🧗", "🎾", "🏀", "🥾"],
+  },
+  {
+    id: "mind",
+    emojis: ["🧠", "🪷", "🧘‍♂️", "💭", "📿", "🕯️", "😌", "🌸", "☮️", "🫧"],
+  },
+  {
+    id: "learning",
+    emojis: ["📖", "📚", "✍️", "🎓", "💡", "📝", "📜", "🔬", "🧪", "🖊️", "📰", "🗣️"],
+  },
+  {
+    id: "health",
+    emojis: ["💧", "🥗", "😴", "💊", "🦷", "🌿", "🍎", "🥦", "🧴", "❤️‍🩹"],
+  },
+  {
+    id: "productivity",
+    emojis: ["✅", "📋", "⏱️", "📅", "💼", "🖥️", "📧", "🗂️", "⌨️", "🔔"],
+  },
+  {
+    id: "lifestyle",
+    emojis: ["🎨", "🎵", "🎮", "📷", "🍳", "🧹", "🛏️", "🐕", "🌅", "🌙", "☀️", "🌱", "🤝", "💬"],
+  },
+] as const;
+
+export const HABIT_EMOJIS = [
+  ...new Set(HABIT_EMOJI_CATEGORIES.flatMap((category) => category.emojis)),
+];
+
 const ACCENT_PALETTE = COLOR_SWATCHES.map((s) => s.value);
 
 /** Gives each habit a distinct border when several share the same stored color. */
