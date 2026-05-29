@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { format, startOfWeek, subWeeks } from "date-fns";
 import {
@@ -14,15 +14,14 @@ import {
   PolarGrid,
   Radar,
   RadarChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { RPGCard } from "@/components/ui/rpg-card";
 import { RPGPageHeader } from "@/components/ui/rpg-page-header";
-import { cn } from "@/lib/utils";
 import { ActivityHeatmap, type HeatmapDay } from "@/components/charts/activity-heatmap";
+import { ChartContainer } from "@/components/charts/chart-container";
 import { GhostLeagueChart } from "@/components/charts/ghost-league-chart";
 
 type GhostLeague = {
@@ -66,37 +65,9 @@ const CHART_TICK = "#666688";
 
 const barChartMargin = { top: 10, right: 16, left: 0, bottom: 5 };
 
-function ChartFrame({
-  className,
-  height,
-  children,
-}: {
-  className?: string;
-  height: number;
-  children: ReactNode;
-}) {
-  return (
-    <div
-      className={cn("w-full min-w-0 max-w-full overflow-hidden", className)}
-      style={{ height }}
-    >
-      {children ? (
-        <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={50}>
-          {children}
-        </ResponsiveContainer>
-      ) : null}
-    </div>
-  );
-}
-
 export function StatsClient({ weeklyXp, radar, meditationTrend: initialTrend, heatmapDays, ghostLeague }: Props) {
   const t = useTranslations("stats");
-  const [mounted, setMounted] = useState(false);
   const [meditationTrend, setMeditationTrend] = useState(initialTrend);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     fetch("/api/mind/meditation")
@@ -111,8 +82,8 @@ export function StatsClient({ weeklyXp, radar, meditationTrend: initialTrend, he
       });
   }, []);
 
-
   const weeklyMaxXp = Math.max(...weeklyXp.map((item) => item.xp), 1);
+  const meditationMax = Math.max(...meditationTrend.map((item) => item.minutes), 1);
 
   const badgeClass =
     ghostLeague.status === "ahead"
@@ -126,11 +97,18 @@ export function StatsClient({ weeklyXp, radar, meditationTrend: initialTrend, he
       <RPGPageHeader title={t("title")} subtitle={t("subtitle")} />
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-        <RPGCard className="min-w-0 overflow-hidden">
+        <RPGCard className="min-w-0">
           <h2 className="rpg-section-heading mb-3 text-rpg-gold">{t("weeklyXp")}</h2>
-          <ChartFrame height={180}>
-            {mounted ? (
-              <BarChart data={weeklyXp} margin={barChartMargin} barCategoryGap="20%" barGap={4}>
+          <ChartContainer height={180}>
+            {({ width, height }) => (
+              <BarChart
+                width={width}
+                height={height}
+                data={weeklyXp}
+                margin={barChartMargin}
+                barCategoryGap="20%"
+                barGap={4}
+              >
                 <CartesianGrid stroke={CHART_GRID} strokeOpacity={0.6} vertical={false} />
                 <XAxis
                   dataKey="name"
@@ -150,17 +128,29 @@ export function StatsClient({ weeklyXp, radar, meditationTrend: initialTrend, he
                   allowDecimals={false}
                 />
                 <Tooltip />
-                <Bar dataKey="xp" fill={CHART_PURPLE} radius={[6, 6, 0, 0]} maxBarSize={56} minPointSize={4} />
+                <Bar
+                  dataKey="xp"
+                  fill={CHART_PURPLE}
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={56}
+                  minPointSize={4}
+                  isAnimationActive={false}
+                />
               </BarChart>
-            ) : null}
-          </ChartFrame>
+            )}
+          </ChartContainer>
         </RPGCard>
 
-        <RPGCard className="min-w-0 overflow-hidden">
+        <RPGCard className="min-w-0">
           <h2 className="rpg-section-heading mb-3 text-rpg-gold">{t("lifeBalance")}</h2>
-          <ChartFrame className="mx-auto max-w-[280px]" height={180}>
-            {mounted ? (
-              <RadarChart data={radar} outerRadius="72%">
+          <ChartContainer height={200} className="mx-auto max-w-[300px]">
+            {({ width, height }) => (
+              <RadarChart
+                width={width}
+                height={height}
+                data={radar}
+                outerRadius={Math.min(width, height) * 0.32}
+              >
                 <PolarGrid stroke={CHART_GRID} />
                 <PolarAngleAxis dataKey="subject" tick={{ fill: CHART_TICK, fontSize: 10 }} />
                 <Radar
@@ -170,15 +160,16 @@ export function StatsClient({ weeklyXp, radar, meditationTrend: initialTrend, he
                   strokeWidth={2}
                   fill={CHART_PURPLE}
                   fillOpacity={0.4}
+                  isAnimationActive={false}
                 />
                 <Tooltip />
               </RadarChart>
-            ) : null}
-          </ChartFrame>
+            )}
+          </ChartContainer>
         </RPGCard>
       </div>
 
-      <RPGCard className="min-w-0 w-full overflow-hidden">
+      <RPGCard className="min-w-0 w-full">
         <h2 className="rpg-section-heading mb-3 text-rpg-gold">{t("ghostLeague")}</h2>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -197,26 +188,50 @@ export function StatsClient({ weeklyXp, radar, meditationTrend: initialTrend, he
         <p className="rpg-body mt-2 italic text-rpg-muted">{t("ghostCaption")}</p>
       </RPGCard>
 
-      <RPGCard className="min-w-0 overflow-hidden">
+      <RPGCard className="min-w-0">
         <h2 className="rpg-section-heading mb-3 text-rpg-gold">{t("meditationTrend")}</h2>
-        <ChartFrame height={200}>
-          {mounted ? (
-            <LineChart data={meditationTrend} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+        <ChartContainer height={200}>
+          {({ width, height }) => (
+            <LineChart
+              width={width}
+              height={height}
+              data={meditationTrend}
+              margin={{ top: 8, right: 8, left: -8, bottom: 0 }}
+            >
               <CartesianGrid stroke={CHART_GRID} strokeOpacity={0.6} vertical={false} />
-              <XAxis dataKey="week" tick={{ fill: CHART_TICK, fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: CHART_TICK, fontSize: 11 }} axisLine={false} tickLine={false} width={32} />
+              <XAxis
+                dataKey="week"
+                tick={{ fill: CHART_TICK, fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: CHART_TICK, fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                width={32}
+                domain={[0, meditationMax]}
+                allowDecimals={false}
+              />
               <Tooltip />
-              <Area type="monotone" dataKey="minutes" stroke={CHART_GOLD} fill="rgba(212,175,55,0.1)" />
+              <Area
+                type="monotone"
+                dataKey="minutes"
+                stroke={CHART_GOLD}
+                fill="rgba(212,175,55,0.12)"
+                isAnimationActive={false}
+              />
               <Line
                 type="monotone"
                 dataKey="minutes"
                 stroke={CHART_GOLD}
                 strokeWidth={2}
                 dot={{ r: 4, fill: CHART_GOLD, stroke: "#e2e2e2", strokeWidth: 2 }}
+                isAnimationActive={false}
               />
             </LineChart>
-          ) : null}
-        </ChartFrame>
+          )}
+        </ChartContainer>
       </RPGCard>
 
       <RPGCard className="min-w-0">
