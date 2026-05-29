@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import MagicBento, { type BentoCardProps } from "@/components/MagicBento";
 import { XpProgressBar } from "@/components/gamification/player-card";
+import { Button } from "@/components/ui/button";
 
 const SURFACE = "#1a1a2e";
 
@@ -23,8 +24,11 @@ type Props = {
   bossTitle: string;
   bossCurrent: number;
   bossTarget: number;
-  onStreakClick?: () => void;
-  onHealthClick?: () => void;
+  onUseFreeze?: () => void;
+  onRecoveryQuest?: () => void;
+  freezeDisabled?: boolean;
+  recoveryDisabled?: boolean;
+  showRecoveryQuest?: boolean;
 };
 
 export function DashboardMagicBento({
@@ -42,8 +46,11 @@ export function DashboardMagicBento({
   bossTitle,
   bossCurrent,
   bossTarget,
-  onStreakClick,
-  onHealthClick,
+  onUseFreeze,
+  onRecoveryQuest,
+  freezeDisabled = false,
+  recoveryDisabled = false,
+  showRecoveryQuest = false,
 }: Props) {
   const t = useTranslations("dashboard");
 
@@ -64,6 +71,23 @@ export function DashboardMagicBento({
             aria-hidden
           />
         ),
+        footer: (
+          <div className="mt-auto w-full pt-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="w-full border-rpg-border bg-rpg-surface text-xs hover:bg-rpg-gold/10 hover:text-rpg-gold"
+              disabled={freezeDisabled}
+              onClick={(e) => {
+                e.stopPropagation();
+                onUseFreeze?.();
+              }}
+            >
+              {freezesAvailable <= 0 ? t("noFreezesRemaining") : t("useFreeze")}
+            </Button>
+          </div>
+        ),
       },
       {
         color: SURFACE,
@@ -81,6 +105,23 @@ export function DashboardMagicBento({
             aria-hidden
           />
         ),
+        footer: showRecoveryQuest ? (
+          <div className="mt-auto w-full pt-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="w-full border-rpg-border bg-rpg-surface text-xs hover:bg-rpg-gold/10 hover:text-rpg-gold"
+              disabled={recoveryDisabled}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRecoveryQuest?.();
+              }}
+            >
+              {t("recoveryQuest")}
+            </Button>
+          </div>
+        ) : undefined,
       },
       {
         color: SURFACE,
@@ -136,6 +177,11 @@ export function DashboardMagicBento({
       bossTitle,
       bossCurrent,
       bossTarget,
+      onUseFreeze,
+      onRecoveryQuest,
+      freezeDisabled,
+      recoveryDisabled,
+      showRecoveryQuest,
     ],
   );
 
@@ -152,10 +198,6 @@ export function DashboardMagicBento({
       spotlightRadius={300}
       particleCount={10}
       glowColor="124, 58, 237"
-      onCardClick={(index) => {
-        if (index === 0) onStreakClick?.();
-        if (index === 1) onHealthClick?.();
-      }}
     />
   );
 }

@@ -243,39 +243,16 @@ export function DashboardClient(props: Props) {
           bossTitle={boss.title}
           bossCurrent={boss.currentValue}
           bossTarget={boss.targetValue}
-          onStreakClick={() => setFreezeOpen(true)}
-          onHealthClick={async () => {
-            if (props.healthValue < props.maxHealth) {
-              const missed = await getMissedHabitsYesterday();
-              setMissedHabits(missed);
-              setRecoveryOpen(true);
-            }
+          onUseFreeze={() => setFreezeOpen(true)}
+          onRecoveryQuest={async () => {
+            const missed = await getMissedHabitsYesterday();
+            setMissedHabits(missed);
+            setRecoveryOpen(true);
           }}
+          freezeDisabled={props.freezesAvailable <= 0 || pending}
+          recoveryDisabled={pending}
+          showRecoveryQuest={props.healthValue < props.maxHealth}
         />
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={props.freezesAvailable <= 0 || pending}
-            onClick={() => setFreezeOpen(true)}
-          >
-            {props.freezesAvailable <= 0 ? t("noFreezesRemaining") : t("useFreeze")}
-          </Button>
-          {props.healthValue < props.maxHealth ? (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={pending}
-              onClick={async () => {
-                const missed = await getMissedHabitsYesterday();
-                setMissedHabits(missed);
-                setRecoveryOpen(true);
-              }}
-            >
-              {t("recoveryQuest")}
-            </Button>
-          ) : null}
-        </div>
       </AnimatedContent>
 
       <AnimatedContent distance={24} duration={0.55} threshold={0.08} delay={0.08}>
