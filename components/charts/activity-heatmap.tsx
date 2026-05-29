@@ -1,18 +1,24 @@
 "use client";
 
 import {
+  addDays,
   addWeeks,
-  eachDayOfInterval,
   format,
-  getDay,
   startOfDay,
-  subDays,
+  startOfWeek,
+  subWeeks,
 } from "date-fns";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { ar, enUS } from "date-fns/locale";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 
 export type HeatmapDay = {
   date: string;
+  count: number;
+};
+
+type HeatmapCell = {
+  date: Date;
   count: number;
 };
 
@@ -22,15 +28,16 @@ type Props = {
   weeks?: number;
 };
 
-const GAP = 3;
-const LABEL_WIDTH = 28;
+const GAP = 4;
+const LABEL_WIDTH = 30;
+const MONTH_ROW_HEIGHT = 18;
 
-function colorForCount(count: number): string {
-  if (count <= 0) return "#1e1e3a";
-  if (count === 1) return "#3d2e6b";
-  if (count === 2) return "#5c4499";
-  if (count === 3) return "#7c5cbf";
-  return "#9b7de0";
+function colorForCount(count: number): { bg: string; glow?: string } {
+  if (count <= 0) return { bg: "#161625" };
+  if (count === 1) return { bg: "#3d2e6b" };
+  if (count === 2) return { bg: "#5c4499" };
+  if (count === 3) return { bg: "#7c5cbf" };
+  return { bg: "#a78bfa", glow: "0 0 8px rgba(167,139,250,0.55)" };
 }
 
 function useResponsiveWeekCount(explicit?: number) {
@@ -84,56 +91,88 @@ function useContainerWidth() {
   return { ref, width };
 }
 
-function buildWeekGrid(countMap: Map<string, number>, weekCount: number) {
-  const end = startOfDay(new Date());
-  const start = subDays(end, weekCount * 7 - 1);
-  const allDays = eachDayOfInterval({ start, end });
-  const weeks: { date: Date; count: number }[][] = [];
+/** Full Sun–Sat week columns (GitHub-style) so every row aligns. */
+function buildWeekGrid(countMap: Map<string, number>, weekCount: number): HeatmapCell[][] {
+  const today = startOfDay(new Date());
+  const currentWeekSunday = startOfWeek(today, { weekStartsOn: 0 });
+  const firstWeekSunday = subWeeks(currentWeekSunday, weekCount - 1);
 
-  let currentWeek: { date: Date; count: number }[] = [];
-  const firstDay = allDays[0]!;
-  const pad = (getDay(firstDay) + 6) % 7;
-  for (let i = 0; i < pad; i++) {
-    currentWeek.push({ date: subDays(firstDay, pad - i), count: -1 });
-  }
-
-  for (const date of allDays) {
-    const key = format(date, "yyyy-MM-dd");
-    currentWeek.push({ date, count: countMap.get(key) ?? 0 });
-    if (currentWeek.length === 7) {
-      weeks.push(currentWeek);
-      currentWeek = [];
+  const weeks: HeatmapCell[][] = [];
+  for (let w = 0; w < weekCount; w++) {
+    const weekSunday = addWeeks(firstWeekSunday, w);
+    const week: HeatmapCell[] = [];
+    for (let d = 0; d < 7; d++) {
+      const date = addDays(weekSunday, d);
+      const isFuture = date > today;
+      const key = format(date, "yyyy-MM-dd");
+      week.push({
+        date,
+        count: isFuture ? -1 : (countMap.get(key) ?? 0),
+      });
     }
-  }
-
-  if (currentWeek.length) {
-    while (currentWeek.length < 7) {
-      currentWeek.push({ date: addWeeks(end, 1), count: -1 });
-    }
-    weeks.push(currentWeek);
+    weeks.push(week);
   }
 
   return weeks;
 }
 
+function buildMonthMarkers(weeks: HeatmapCell[][]) {
+  const seenMonths = new Set<string>();
+
+  return weeks.map((week, columnIndex) => {
+    const inRangeDays = week.filter((cell) => cell.count >= 0);
+    const firstOfMonth = inRangeDays.find((cell) => cell.date.getDate() === 1);
+
+    if (firstOfMonth) {
+      const monthKey = format(firstOfMonth.date, "yyyy-MM");
+      if (!seenMonths.has(monthKey)) {
+        seenMonths.add(monthKey);
+        return {
+          label: format(firstOfMonth.date, "MMM"),
+          show: true,
+        };
+      }
+    }
+
+    if (columnIndex === 0 && inRangeDays[0]) {
+      const monthKey = format(inRangeDays[0].date, "yyyy-MM");
+      seenMonths.add(monthKey);
+      return {
+        label: format(inRangeDays[0].date, "MMM"),
+        show: true,
+      };
+    }
+
+    return { label: "", show: false };
+  });
+}
+
+function formatHeatmapDate(date: Date, locale: string) {
+  const dfLocale = locale === "ar" ? ar : enUS;
+  return format(date, "EEEE, MMMM d, yyyy", { locale: dfLocale });
+}
+
 export function ActivityHeatmap({ days, weeks: weeksProp }: Props) {
   const t = useTranslations("stats");
+  const locale = useLocale();
   const weekCount = useResponsiveWeekCount(weeksProp);
   const { ref: containerRef, width: containerWidth } = useContainerWidth();
-  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const todayKey = format(new Date(), "yyyy-MM-dd");
+  const [activeKey, setActiveKey] = useState<string | null>(todayKey);
 
   const dayLabels = [
+    t("heatmapSun"),
     t("heatmapMon"),
     t("heatmapTue"),
     t("heatmapWed"),
     t("heatmapThu"),
     t("heatmapFri"),
     t("heatmapSat"),
-    t("heatmapSun"),
   ];
 
   const countMap = useMemo(() => new Map(days.map((d) => [d.date, d.count])), [days]);
   const grid = useMemo(() => buildWeekGrid(countMap, weekCount), [countMap, weekCount]);
+  const monthMarkers = useMemo(() => buildMonthMarkers(grid), [grid]);
 
   const columns = grid.length;
   const availableWidth = Math.max(containerWidth - LABEL_WIDTH, 0);
@@ -142,131 +181,126 @@ export function ActivityHeatmap({ days, weeks: weeksProp }: Props) {
       ? Math.floor((availableWidth - (columns - 1) * GAP) / columns)
       : 12;
 
-  // Scale cells to fill the card width — avoids broken layout inside overflow-x-hidden shells.
-  const cellSize = Math.max(8, Math.min(20, fitCellSize || 12));
+  const cellSize = Math.max(9, Math.min(22, fitCellSize || 12));
+  const gridTemplateColumns = `${LABEL_WIDTH}px repeat(${columns}, ${cellSize}px)`;
 
-  const monthByColumn = useMemo(() => {
-    let lastMonth = "";
-    return grid.map((week) => {
-      const valid = week.find((d) => d.count >= 0);
-      if (!valid) return { label: "", show: false };
-      const month = format(valid.date, "MMM");
-      if (month === lastMonth) return { label: month, show: false };
-      lastMonth = month;
-      return { label: month, show: true };
-    });
-  }, [grid]);
-
-  const todayKey = format(new Date(), "yyyy-MM-dd");
+  const activeCell = useMemo(() => {
+    if (!activeKey) return null;
+    return grid.flat().find((d) => d.count >= 0 && format(d.date, "yyyy-MM-dd") === activeKey) ?? null;
+  }, [activeKey, grid]);
 
   return (
     <div ref={containerRef} className="w-full min-w-0">
       <div className="overflow-hidden pb-1">
-        <div>
-          {/* Month row — one column per week */}
-          <div className="mb-1 flex" style={{ gap: GAP, paddingInlineStart: LABEL_WIDTH }}>
-            {monthByColumn.map((month, wi) => (
-              <div
-                key={wi}
-                className="shrink-0 overflow-hidden text-[10px] leading-none text-[#8888aa]"
-                style={{ width: cellSize, height: 14 }}
-              >
-                {month.show ? month.label : null}
-              </div>
-            ))}
-          </div>
-
-          <div className="flex" style={{ gap: GAP }}>
-            {/* Day labels — Mon / Wed / Fri only (GitHub-style) */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns,
+            columnGap: GAP,
+            rowGap: GAP,
+          }}
+        >
+          {/* Month row with tick marks */}
+          <div style={{ height: MONTH_ROW_HEIGHT }} />
+          {monthMarkers.map((month, wi) => (
             <div
-              className="flex shrink-0 flex-col"
-              style={{ width: LABEL_WIDTH, gap: GAP, paddingTop: 1 }}
+              key={`month-${wi}`}
+              className="flex flex-col items-start justify-end"
+              style={{ height: MONTH_ROW_HEIGHT }}
             >
-              {dayLabels.map((label, rowIdx) => (
-                <span
-                  key={label}
-                  className="flex items-center text-[10px] leading-none text-[#8888aa]"
-                  style={{ height: cellSize }}
-                >
-                  {rowIdx === 0 || rowIdx === 2 || rowIdx === 4 ? label : ""}
-                </span>
-              ))}
+              {month.show ? (
+                <>
+                  <span className="mb-0.5 ms-0.5 block h-1.5 w-px bg-[#8888aa]/70" aria-hidden />
+                  <span className="text-[10px] leading-none text-[#8888aa]">{month.label}</span>
+                </>
+              ) : null}
             </div>
+          ))}
 
-            {/* Week columns */}
-            <div className="flex shrink-0" style={{ gap: GAP }}>
-              {grid.map((week, wi) => (
-                <div key={wi} className="flex shrink-0 flex-col" style={{ gap: GAP }}>
-                  {week.map((cell, di) => {
-                    if (cell.count < 0) {
-                      return (
-                        <div
-                          key={di}
-                          className="shrink-0 rounded-[3px] bg-transparent"
-                          style={{ width: cellSize, height: cellSize }}
-                        />
-                      );
-                    }
+          {/* Sun → Sat rows */}
+          {[0, 1, 2, 3, 4, 5, 6].map((rowIdx) => (
+            <Fragment key={`row-${rowIdx}`}>
+              <span
+                className="flex items-center text-[10px] leading-none text-[#8888aa]"
+                style={{ height: cellSize }}
+              >
+                {dayLabels[rowIdx]}
+              </span>
 
-                    const key = format(cell.date, "yyyy-MM-dd");
-                    const isToday = key === todayKey;
-                    const isActive = activeTooltip === key;
-                    const tooltipText = t("heatmapTooltip", {
-                      date: format(cell.date, "PP"),
-                      count: cell.count,
-                    });
+              {grid.map((week, wi) => {
+                const cell = week[rowIdx]!;
 
-                    return (
-                      <button
-                        key={di}
-                        type="button"
-                        className="shrink-0 rounded-[3px] transition hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rpg-gold"
-                        style={{
-                          width: cellSize,
-                          height: cellSize,
-                          background: colorForCount(cell.count),
-                          outline: isToday ? "2px solid #f0c040" : isActive ? "2px solid #e8e8f0" : undefined,
-                          outlineOffset: "1px",
-                        }}
-                        onClick={() => setActiveTooltip((prev) => (prev === key ? null : key))}
-                        aria-label={tooltipText}
-                        aria-pressed={isActive}
-                      />
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
+                if (cell.count < 0) {
+                  return (
+                    <div
+                      key={`${wi}-${rowIdx}`}
+                      className="rounded-[4px] bg-[#12121f]"
+                      style={{ width: cellSize, height: cellSize }}
+                    />
+                  );
+                }
+
+                const key = format(cell.date, "yyyy-MM-dd");
+                const isSelected = activeKey === key;
+                const { bg, glow } = colorForCount(cell.count);
+                const tooltipText = t("heatmapTooltip", {
+                  date: formatHeatmapDate(cell.date, locale),
+                  count: cell.count,
+                });
+
+                return (
+                  <button
+                    key={`${wi}-${rowIdx}`}
+                    type="button"
+                    className="rounded-[4px] transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rpg-gold"
+                    style={{
+                      width: cellSize,
+                      height: cellSize,
+                      background: bg,
+                      boxShadow: isSelected
+                        ? "0 0 0 2px #f0c040"
+                        : glow,
+                      outline: "none",
+                    }}
+                    onClick={() => setActiveKey((prev) => (prev === key ? null : key))}
+                    aria-label={tooltipText}
+                    aria-pressed={isSelected}
+                  />
+                );
+              })}
+            </Fragment>
+          ))}
         </div>
       </div>
 
-      {activeTooltip ? (
-        <p className="mt-2 text-center text-xs text-rpg-secondary">
-          {(() => {
-            const cell = grid.flat().find((d) => d.count >= 0 && format(d.date, "yyyy-MM-dd") === activeTooltip);
-            if (!cell) return null;
-            return t("heatmapTooltip", {
-              date: format(cell.date, "PP"),
-              count: cell.count,
-            });
-          })()}
+      {activeCell ? (
+        <p className="mt-3 text-center text-xs text-[#8888aa]">
+          {t("heatmapTooltip", {
+            date: formatHeatmapDate(activeCell.date, locale),
+            count: activeCell.count,
+          })}
         </p>
-      ) : null}
+      ) : (
+        <p className="mt-3 text-center text-xs text-[#8888aa]/60">{t("heatmapHint")}</p>
+      )}
 
-      <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-[10px] text-[#8888aa] sm:justify-start">
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-[10px] text-[#8888aa]">
         <span>{t("heatmapLess")}</span>
-        {[0, 1, 2, 3, 4].map((c) => (
-          <span
-            key={c}
-            className="rounded-[3px]"
-            style={{
-              width: Math.max(cellSize, 12),
-              height: Math.max(cellSize, 12),
-              background: colorForCount(c === 0 ? 0 : c),
-            }}
-          />
-        ))}
+        {[0, 1, 2, 3, 4].map((c) => {
+          const { bg, glow } = colorForCount(c === 0 ? 0 : c);
+          return (
+            <span
+              key={c}
+              className="rounded-[4px]"
+              style={{
+                width: 12,
+                height: 12,
+                background: bg,
+                boxShadow: glow,
+              }}
+            />
+          );
+        })}
         <span>{t("heatmapMore")}</span>
       </div>
     </div>
