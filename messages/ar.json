@@ -46,6 +46,13 @@
     "closeMenu": "إغلاق القائمة",
     "mobileNav": "التنقل الرئيسي"
   },
+  "pwa": {
+    "install": "تثبيت",
+    "installApp": "Life RPG",
+    "installing": "جاري التثبيت… Life RPG",
+    "dismiss": "إغلاق",
+    "iosHint": "اضغط مشاركة ↗ ثم أضف إلى الشاشة الرئيسية"
+  },
   "dashboard": {
     "title": "الإحاطة الصباحية",
     "greetingMorning": "صباح الخير أيها المغامر. اليوم لك لتغلب عليه.",

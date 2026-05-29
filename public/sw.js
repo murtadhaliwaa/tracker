@@ -1,4 +1,4 @@
-const CACHE = "life-rpg-shell-v1";
+const CACHE = "life-rpg-shell-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

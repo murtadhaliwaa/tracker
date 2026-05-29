@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Cinzel, Inter, Cairo } from "next/font/google";
 import { PreloadCleanup } from "@/components/preload-cleanup";
-import { RegisterServiceWorker } from "@/components/pwa/register-sw";
 import "./globals.css";
 
 const inter = Inter({
@@ -71,7 +70,6 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <PreloadCleanup />
-        <RegisterServiceWorker />
         {children}
       </body>
     </html>

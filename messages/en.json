@@ -48,6 +48,13 @@
     "closeMenu": "Close menu",
     "mobileNav": "Main navigation"
   },
+  "pwa": {
+    "install": "Install",
+    "installApp": "Life RPG",
+    "installing": "Installing… Life RPG",
+    "dismiss": "Dismiss",
+    "iosHint": "Tap Share ↗ then Add to Home Screen"
+  },
   "dashboard": {
     "title": "Morning Briefing",
     "greetingMorning": "Good morning, adventurer. Today is yours to conquer.",
