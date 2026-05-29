@@ -1,7 +1,8 @@
-import { NextIntlClientProvider, hasLocale } from "next-intl";
+import { hasLocale } from "next-intl";
 import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
+import { IntlProvider } from "@/components/intl-provider";
 import { PwaInstallPrompt } from "@/components/pwa/install-prompt";
 
 export default async function LocaleLayout({
@@ -20,11 +21,11 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <NextIntlClientProvider messages={messages}>
+    <IntlProvider locale={locale} messages={messages}>
       <div dir={locale === "ar" ? "rtl" : "ltr"}>
         <PwaInstallPrompt />
         {children}
       </div>
-    </NextIntlClientProvider>
+    </IntlProvider>
   );
 }
