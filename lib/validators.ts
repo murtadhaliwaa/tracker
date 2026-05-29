@@ -61,7 +61,7 @@ export const courseFormSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(1000).optional(),
   category: z.string().max(60).optional(),
-  icon: z.string().min(1).max(10).default("📚"),
+  icon: z.string().min(1).max(32).default("📚"),
   totalLessons: z.number().int().min(1).max(10000),
   provider: z.string().max(100).optional(),
   difficulty: z.number().int().min(1).max(5).optional(),

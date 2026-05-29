@@ -8,19 +8,17 @@ import { BookOpen, Brain, Trash2 } from "lucide-react";
 import { RPGCard } from "@/components/ui/rpg-card";
 import { RPGPageHeader } from "@/components/ui/rpg-page-header";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api-fetch";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { LevelUpModal } from "@/components/shared/level-up-modal";
 import { deleteMeditationSession } from "@/app/[locale]/(protected)/mind/actions";
+import {
+  MeditationSessionDialog,
+  type MeditationFormValues,
+} from "@/components/mind/meditation-session-dialog";
+import {
+  ReadingSessionDialog,
+  type ReadingFormValues,
+} from "@/components/mind/reading-session-dialog";
 
 type MeditationItem = {
   id: string;
@@ -86,18 +84,6 @@ export function MindClient(props: Props) {
     props.readingSessions,
   ]);
 
-  const [medForm, setMedForm] = useState({
-    duration: 10,
-    notes: "",
-    date: new Date().toISOString().slice(0, 10),
-  });
-  const [readForm, setReadForm] = useState({
-    bookTitle: "",
-    pagesRead: 10,
-    notes: "",
-    date: new Date().toISOString().slice(0, 10),
-  });
-
   const booksGrouped = useMemo(() => {
     const map = new Map<
       string,
@@ -115,6 +101,110 @@ export function MindClient(props: Props) {
 
   const avgDuration = meditationCount ? Math.round(totalMinutes / meditationCount) : 0;
   const avgPages = readingCount ? Math.round(totalPages / readingCount) : 0;
+
+  const submitMeditation = (medForm: MeditationFormValues) => {
+    if (medForm.duration < 1) return;
+    startTransition(async () => {
+      try {
+        const result = await apiFetch<{
+          session: {
+            id: string;
+            type: string;
+            duration: number;
+            notes: string | null;
+            sessionDate: string;
+            createdAt: string;
+          };
+          xpAwarded: number;
+          leveledUp: boolean;
+          newLevel: number;
+          newTitle: string;
+        }>("/api/mind/meditation", {
+          method: "POST",
+          body: JSON.stringify({
+            duration: medForm.duration,
+            notes: medForm.notes || undefined,
+            date: medForm.date,
+          }),
+        });
+
+        setMeditationCount((c) => c + 1);
+        setTotalMinutes((m) => m + medForm.duration);
+        setRecentMeditations((prev) =>
+          [
+            {
+              id: result.session.id,
+              type: result.session.type,
+              duration: result.session.duration,
+              notes: result.session.notes,
+              createdAt: result.session.createdAt,
+              sessionDate: result.session.sessionDate,
+              xp: result.xpAwarded,
+            },
+            ...prev,
+          ].slice(0, 5),
+        );
+
+        toast.success(t("sessionLogged"));
+        if (result.leveledUp) setLevelUp({ level: result.newLevel, title: result.newTitle });
+        setMedOpen(false);
+        router.refresh();
+      } catch {
+        toast.error(tc("error"));
+      }
+    });
+  };
+
+  const submitReading = (readForm: ReadingFormValues) => {
+    if (!readForm.bookTitle.trim() || readForm.pagesRead < 1) return;
+    startTransition(async () => {
+      try {
+        const result = await apiFetch<{
+          session: {
+            id: string;
+            bookTitle: string;
+            pagesRead: number;
+            rating: number | null;
+            notes: string | null;
+            createdAt: string;
+          };
+          xpAwarded: number;
+          leveledUp: boolean;
+          newLevel: number;
+          newTitle: string;
+        }>("/api/mind/reading", {
+          method: "POST",
+          body: JSON.stringify({
+            bookTitle: readForm.bookTitle,
+            pagesRead: readForm.pagesRead,
+            notes: readForm.notes || undefined,
+            date: readForm.date,
+          }),
+        });
+
+        setReadingCount((c) => c + 1);
+        setTotalPages((p) => p + readForm.pagesRead);
+        setReadingSessions((prev) => [
+          {
+            id: result.session.id,
+            bookTitle: result.session.bookTitle,
+            pagesRead: result.session.pagesRead,
+            rating: result.session.rating,
+            notes: result.session.notes,
+            createdAt: result.session.createdAt,
+          },
+          ...prev,
+        ]);
+
+        toast.success(t("readingLogged"));
+        if (result.leveledUp) setLevelUp({ level: result.newLevel, title: result.newTitle });
+        setReadOpen(false);
+        router.refresh();
+      } catch {
+        toast.error(tc("error"));
+      }
+    });
+  };
 
   return (
     <div className="space-y-5">
@@ -263,211 +353,20 @@ export function MindClient(props: Props) {
         </RPGCard>
       </div>
 
-      <Dialog open={medOpen} onOpenChange={setMedOpen}>
-        {medOpen ? (
-          <DialogContent className="border-[#1e1e3a] bg-[#0f0f1a] sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>{t("logSession")}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div>
-                <Label>{t("duration")}</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  className="border-[#1e1e3a] bg-[#13131f]"
-                  value={medForm.duration}
-                  onChange={(e) => setMedForm({ ...medForm, duration: Number(e.target.value) })}
-                />
-              </div>
-              <div>
-                <Label>{t("notes")}</Label>
-                <Textarea
-                  className="border-[#1e1e3a] bg-[#13131f]"
-                  value={medForm.notes}
-                  onChange={(e) => setMedForm({ ...medForm, notes: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>{t("date")}</Label>
-                <Input
-                  type="date"
-                  className="border-[#1e1e3a] bg-[#13131f]"
-                  value={medForm.date}
-                  onChange={(e) => setMedForm({ ...medForm, date: e.target.value })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                disabled={pending || medForm.duration < 1}
-                onClick={() =>
-                  startTransition(async () => {
-                    try {
-                      const result = await apiFetch<{
-                        session: { id: string; type: string; duration: number; notes: string | null; sessionDate: string; createdAt: string };
-                        xpAwarded: number;
-                        leveledUp: boolean;
-                        newLevel: number;
-                        newTitle: string;
-                      }>("/api/mind/meditation", {
-                        method: "POST",
-                        body: JSON.stringify({
-                          duration: medForm.duration,
-                          notes: medForm.notes || undefined,
-                          date: medForm.date,
-                        }),
-                      });
+      <MeditationSessionDialog
+        open={medOpen}
+        onOpenChange={setMedOpen}
+        pending={pending}
+        onSubmit={submitMeditation}
+      />
 
-                      setMeditationCount((c) => c + 1);
-                      setTotalMinutes((m) => m + medForm.duration);
-                      setRecentMeditations((prev) => [
-                        {
-                          id: result.session.id,
-                          type: result.session.type,
-                          duration: result.session.duration,
-                          notes: result.session.notes,
-                          createdAt: result.session.createdAt,
-                          sessionDate: result.session.sessionDate,
-                          xp: result.xpAwarded,
-                        },
-                        ...prev,
-                      ].slice(0, 5));
-
-                      toast.success(t("sessionLogged"));
-                      if (result.leveledUp) setLevelUp({ level: result.newLevel, title: result.newTitle });
-                      setMedOpen(false);
-                      setMedForm({ duration: 10, notes: "", date: new Date().toISOString().slice(0, 10) });
-                      router.refresh();
-                    } catch {
-                      toast.error(tc("error"));
-                    }
-                  })
-                }
-              >
-                {t("completeSession")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        ) : null}
-      </Dialog>
-
-      <Dialog open={readOpen} onOpenChange={setReadOpen}>
-        {readOpen ? (
-          <DialogContent className="border-[#1e1e3a] bg-[#0f0f1a] sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>{t("logReading")}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div>
-                <Label>{t("bookTitle")}</Label>
-                <Input
-                  list="books"
-                  className="border-[#1e1e3a] bg-[#13131f]"
-                  value={readForm.bookTitle}
-                  onChange={(e) => setReadForm({ ...readForm, bookTitle: e.target.value })}
-                />
-                <datalist id="books">
-                  {props.bookTitles.map((b) => (
-                    <option key={b} value={b} />
-                  ))}
-                </datalist>
-              </div>
-              <div>
-                <Label>{t("pagesRead")}</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  className="border-[#1e1e3a] bg-[#13131f]"
-                  value={readForm.pagesRead}
-                  onChange={(e) => setReadForm({ ...readForm, pagesRead: Number(e.target.value) })}
-                />
-              </div>
-              <div>
-                <Label>{t("notes")}</Label>
-                <Textarea
-                  className="border-[#1e1e3a] bg-[#13131f]"
-                  value={readForm.notes}
-                  onChange={(e) => setReadForm({ ...readForm, notes: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>{t("date")}</Label>
-                <Input
-                  type="date"
-                  className="border-[#1e1e3a] bg-[#13131f]"
-                  value={readForm.date}
-                  onChange={(e) => setReadForm({ ...readForm, date: e.target.value })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                disabled={pending || !readForm.bookTitle || readForm.pagesRead < 1}
-                onClick={() =>
-                  startTransition(async () => {
-                    try {
-                      const result = await apiFetch<{
-                        session: {
-                          id: string;
-                          bookTitle: string;
-                          pagesRead: number;
-                          rating: number | null;
-                          notes: string | null;
-                          createdAt: string;
-                        };
-                        xpAwarded: number;
-                        leveledUp: boolean;
-                        newLevel: number;
-                        newTitle: string;
-                      }>("/api/mind/reading", {
-                        method: "POST",
-                        body: JSON.stringify({
-                          bookTitle: readForm.bookTitle,
-                          pagesRead: readForm.pagesRead,
-                          notes: readForm.notes || undefined,
-                          date: readForm.date,
-                        }),
-                      });
-
-                      setReadingCount((c) => c + 1);
-                      setTotalPages((p) => p + readForm.pagesRead);
-                      setReadingSessions((prev) => [
-                        {
-                          id: result.session.id,
-                          bookTitle: result.session.bookTitle,
-                          pagesRead: result.session.pagesRead,
-                          rating: result.session.rating,
-                          notes: result.session.notes,
-                          createdAt: result.session.createdAt,
-                        },
-                        ...prev,
-                      ]);
-
-                      toast.success(t("readingLogged"));
-                      if (result.leveledUp) setLevelUp({ level: result.newLevel, title: result.newTitle });
-                      setReadOpen(false);
-                      setReadForm({
-                        bookTitle: "",
-                        pagesRead: 10,
-                        notes: "",
-                        date: new Date().toISOString().slice(0, 10),
-                      });
-                      router.refresh();
-                    } catch {
-                      toast.error(tc("error"));
-                    }
-                  })
-                }
-              >
-                {t("save")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        ) : null}
-      </Dialog>
+      <ReadingSessionDialog
+        open={readOpen}
+        onOpenChange={setReadOpen}
+        pending={pending}
+        bookTitles={props.bookTitles}
+        onSubmit={submitReading}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -8,19 +8,10 @@ import { Check, Plus } from "lucide-react";
 import { RPGCard } from "@/components/ui/rpg-card";
 import { RPGPageHeader } from "@/components/ui/rpg-page-header";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api-fetch";
+import { getCourseCategoryLabel, getCourseCategoryLabels } from "@/lib/course-display";
 import {
   Dialog,
   DialogContent,
@@ -29,9 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { LevelUpModal } from "@/components/shared/level-up-modal";
-
-const COURSE_ICONS = ["📚", "🎓", "💻", "🧠", "📊", "🎨"];
-const COURSE_CATEGORIES = ["Programming", "Language", "Science", "Business", "Art", "Other"];
+import { CourseFormDialog, type CourseFormValues } from "@/components/courses/course-form-dialog";
 
 type LessonItem = {
   id: string;
@@ -50,22 +39,6 @@ type CourseItem = {
   completedLessons: number;
   xpReward: number;
   lessons: LessonItem[];
-};
-
-type CourseForm = {
-  title: string;
-  description: string;
-  category: string;
-  icon: string;
-  totalLessons: number;
-};
-
-const emptyForm: CourseForm = {
-  title: "",
-  description: "",
-  category: "",
-  icon: "📚",
-  totalLessons: 10,
 };
 
 type Props = {
@@ -93,11 +66,11 @@ type LessonPatchResult = {
 export function CoursesClient({ courses: initialCourses }: Props) {
   const t = useTranslations("courses");
   const tc = useTranslations("common");
+  const categoryLabels = useMemo(() => getCourseCategoryLabels(t), [t]);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [courses, setCourses] = useState(initialCourses);
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState<CourseForm>(emptyForm);
   const [detailCourseId, setDetailCourseId] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState<{ title: string; xp: number } | null>(null);
   const [levelUp, setLevelUp] = useState<{ level: number; title: string } | null>(null);
@@ -108,7 +81,7 @@ export function CoursesClient({ courses: initialCourses }: Props) {
 
   const detailCourse = courses.find((c) => c.id === detailCourseId) ?? null;
 
-  const saveCourse = () => {
+  const saveCourse = (form: CourseFormValues) => {
     if (!form.title || !form.category || form.totalLessons < 1) return;
     startTransition(async () => {
       try {
@@ -125,7 +98,6 @@ export function CoursesClient({ courses: initialCourses }: Props) {
         setCourses((prev) => [data.course, ...prev]);
         toast.success(t("created"));
         setFormOpen(false);
-        setForm(emptyForm);
         router.refresh();
       } catch {
         toast.error(tc("error"));
@@ -196,10 +168,7 @@ export function CoursesClient({ courses: initialCourses }: Props) {
             type="button"
             variant="outline"
             className="border-[#D4AF37] bg-transparent text-[#D4AF37] hover:bg-[rgba(212,175,55,0.1)]"
-            onClick={() => {
-              setForm(emptyForm);
-              setFormOpen(true);
-            }}
+            onClick={() => setFormOpen(true)}
           >
             <Plus className="size-4" />
             {t("addCourse")}
@@ -229,7 +198,7 @@ export function CoursesClient({ courses: initialCourses }: Props) {
                   <p className="font-heading text-base text-rpg-text">{course.title}</p>
                   {course.category ? (
                     <span className="mt-1.5 inline-block rounded-full border border-[#7C3AED]/40 bg-[#7C3AED]/10 px-2 py-0.5 text-[11px] text-[#7C3AED]">
-                      {course.category}
+                      {getCourseCategoryLabel(course.category, categoryLabels)}
                     </span>
                   ) : null}
                   <p className="mt-2 text-xs text-rpg-secondary">
@@ -260,93 +229,12 @@ export function CoursesClient({ courses: initialCourses }: Props) {
         })}
       </div>
 
-      <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        {formOpen ? (
-          <DialogContent className="border-[#1e1e3a] bg-[#0f0f1a] sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{t("addCourse")}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div>
-                <Label>{t("fieldTitle")}</Label>
-                <Input
-                  className="border-[#1e1e3a] bg-[#13131f]"
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>{t("fieldDescription")}</Label>
-                <Textarea
-                  className="border-[#1e1e3a] bg-[#13131f]"
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>{t("fieldLessons")}</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  className="border-[#1e1e3a] bg-[#13131f]"
-                  value={form.totalLessons}
-                  onChange={(e) => setForm({ ...form, totalLessons: Number(e.target.value) })}
-                />
-              </div>
-              <div>
-                <Label>{t("fieldCategory")}</Label>
-                <Select
-                  value={form.category || undefined}
-                  onValueChange={(value) => setForm({ ...form, category: value ?? "" })}
-                >
-                  <SelectTrigger className="mt-1 w-full border-[#1e1e3a] bg-[#13131f]">
-                    <SelectValue placeholder={t("fieldCategory")} />
-                  </SelectTrigger>
-                  <SelectContent className="border-[#1e1e3a] bg-[#0f0f1a]">
-                    {COURSE_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>{t("fieldIcon")}</Label>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {COURSE_ICONS.map((icon) => (
-                    <button
-                      key={icon}
-                      type="button"
-                      onClick={() => setForm({ ...form, icon })}
-                      className={cn(
-                        "flex size-10 items-center justify-center rounded-lg border text-xl transition",
-                        form.icon === icon
-                          ? "border-[#D4AF37] bg-[#D4AF37]/10"
-                          : "border-[#1e1e3a] bg-[#0f0f1a]",
-                      )}
-                    >
-                      {icon}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
-                {tc("cancel")}
-              </Button>
-              <Button
-                type="button"
-                disabled={pending || !form.title || !form.category}
-                onClick={saveCourse}
-              >
-                {tc("save")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        ) : null}
-      </Dialog>
+      <CourseFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        pending={pending}
+        onSubmit={saveCourse}
+      />
 
       <Dialog open={Boolean(detailCourse)} onOpenChange={() => setDetailCourseId(null)}>
         {detailCourse ? (
