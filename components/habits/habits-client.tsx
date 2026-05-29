@@ -20,6 +20,7 @@ import {
   Check,
   Flame,
   GripVertical,
+  MoreVertical,
   Pencil,
   Plus,
   Trash2,
@@ -165,8 +166,28 @@ function SortableHabitRow({
   const [formOpen, setFormOpen] = useState(false);
   const [notes, setNotes] = useState("");
   const [timerOpen, setTimerOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const style = { transform: CSS.Transform.toString(transform), transition };
+
+  const completeControl = habit.completedToday ? (
+    <div className="inline-flex items-center gap-1 rounded-lg border border-rpg-green/40 bg-rpg-green/10 px-2 py-1 text-xs font-bold text-rpg-green">
+      <Check className="size-4" />
+      <span className="hidden sm:inline">{t("completed")}</span>
+    </div>
+  ) : habit.logType === "CHECKBOX" ? (
+    <Button size="sm" variant="outline" className="shrink-0" onClick={() => onComplete()}>
+      {t("complete")}
+    </Button>
+  ) : habit.logType === "FORM" ? (
+    <Button size="sm" variant="outline" className="shrink-0" onClick={() => setFormOpen(true)}>
+      {t("complete")}
+    </Button>
+  ) : (
+    <Button size="sm" variant="outline" className="shrink-0" onClick={() => setTimerOpen((v) => !v)}>
+      {timerOpen ? t("hideTimer") : t("startTimer")}
+    </Button>
+  );
 
   return (
     <>
@@ -178,62 +199,115 @@ function SortableHabitRow({
           borderLeftStyle: "solid",
           borderLeftColor: habitAccentColor(accentContext, habit.id),
         }}
-        className="flex items-center justify-between gap-3 rounded-lg border border-[#1e1e3a] bg-[#0f0f1a] px-3 py-2"
+        className="flex items-start gap-2 rounded-lg border border-[#1e1e3a] bg-[#0f0f1a] px-3 py-2.5 sm:items-center sm:justify-between sm:gap-3"
       >
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-start gap-2">
           {!archived ? (
-            <button type="button" className="text-rpg-secondary" {...attributes} {...listeners}>
+            <button type="button" className="mt-0.5 shrink-0 text-rpg-secondary" {...attributes} {...listeners}>
               <GripVertical className="size-4" />
             </button>
           ) : null}
           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-[#1e1e3a] bg-[#0f0f1a] text-lg">
             {habitIconDisplay(habit.icon)}
           </div>
-          <div className="min-w-0">
-            <p className={`truncate text-sm ${habit.completedToday ? "text-rpg-green line-through" : "text-rpg-text"}`}>
+          <div className="min-w-0 flex-1">
+            <p
+              dir="auto"
+              className={`text-sm leading-snug break-words ${
+                habit.completedToday ? "text-rpg-green line-through" : "text-rpg-text"
+              }`}
+            >
               {habit.title}
             </p>
-            <p className="text-xs text-rpg-secondary">+{habit.xpValue} XP</p>
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-rpg-secondary">
+              <span>+{habit.xpValue} XP</span>
+              <span className="inline-flex items-center gap-1 sm:hidden">
+                <Flame className="size-3 text-rpg-gold" />
+                {habit.currentStreak}
+              </span>
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <p className="hidden items-center gap-1 text-xs text-rpg-secondary sm:flex">
+
+        <div className="flex shrink-0 items-center gap-1">
+          <p className="me-1 hidden items-center gap-1 text-xs text-rpg-secondary sm:flex">
             <Flame className="size-3 text-rpg-gold" /> {habit.currentStreak}
           </p>
           {!archived ? (
             <>
-              <Button size="icon-sm" variant="ghost" onClick={onEdit}>
-                <Pencil className="size-4" />
-              </Button>
-              <Button size="icon-sm" variant="ghost" onClick={onArchive}>
-                <Archive className="size-4" />
-              </Button>
-              <Button size="icon-sm" variant="ghost" onClick={onDelete}>
-                <Trash2 className="size-4 text-rpg-red" />
-              </Button>
-              {habit.completedToday ? (
-                <div className="inline-flex items-center gap-1 rounded-lg border border-rpg-green/40 bg-rpg-green/10 px-2 py-1 text-xs font-bold text-rpg-green">
-                  <Check className="size-4" />
-                  {t("completed")}
-                </div>
-              ) : habit.logType === "CHECKBOX" ? (
-                <Button size="sm" variant="outline" onClick={() => onComplete()}>
-                  {t("complete")}
+              <div className="hidden items-center gap-1 sm:flex">
+                <Button size="icon-sm" variant="ghost" onClick={onEdit} aria-label={t("editHabit")}>
+                  <Pencil className="size-4" />
                 </Button>
-              ) : habit.logType === "FORM" ? (
-                <Button size="sm" variant="outline" onClick={() => setFormOpen(true)}>
-                  {t("complete")}
+                <Button size="icon-sm" variant="ghost" onClick={onArchive} aria-label={t("archiveHabit")}>
+                  <Archive className="size-4" />
                 </Button>
-              ) : (
-                <Button size="sm" variant="outline" onClick={() => setTimerOpen((v) => !v)}>
-                  {timerOpen ? t("hideTimer") : t("startTimer")}
+                <Button size="icon-sm" variant="ghost" onClick={onDelete} aria-label={t("delete")}>
+                  <Trash2 className="size-4 text-rpg-red" />
                 </Button>
-              )}
+              </div>
+              {completeControl}
+              <div className="relative sm:hidden">
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label={t("moreActions")}
+                  aria-expanded={menuOpen}
+                  onClick={() => setMenuOpen((open) => !open)}
+                >
+                  <MoreVertical className="size-4" />
+                </Button>
+                {menuOpen ? (
+                  <>
+                    <button
+                      type="button"
+                      className="fixed inset-0 z-40"
+                      aria-label={t("cancel")}
+                      onClick={() => setMenuOpen(false)}
+                    />
+                    <div className="absolute end-0 top-full z-50 mt-1 min-w-[10.5rem] overflow-hidden rounded-lg border border-[#1e1e3a] bg-[#13131f] py-1 shadow-xl">
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rpg-text hover:bg-[#1e1e3a]"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onEdit();
+                        }}
+                      >
+                        <Pencil className="size-4" />
+                        {t("editHabit")}
+                      </button>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rpg-text hover:bg-[#1e1e3a]"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onArchive();
+                        }}
+                      >
+                        <Archive className="size-4" />
+                        {t("archiveHabit")}
+                      </button>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-rpg-red hover:bg-[#1e1e3a]"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onDelete();
+                        }}
+                      >
+                        <Trash2 className="size-4" />
+                        {t("delete")}
+                      </button>
+                    </div>
+                  </>
+                ) : null}
+              </div>
             </>
           ) : (
             <Button size="sm" variant="outline" onClick={onUnarchive}>
               <ArchiveRestore className="size-4" />
-              {t("unarchive")}
+              <span className="hidden sm:inline">{t("unarchive")}</span>
             </Button>
           )}
         </div>

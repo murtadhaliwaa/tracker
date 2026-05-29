@@ -109,6 +109,8 @@
     "questLogHint": "Select a quest to jump to it",
     "addHabit": "Add Habit",
     "editHabit": "Edit Habit",
+    "archiveHabit": "Archive",
+    "moreActions": "More actions",
     "empty": "No habits yet. Add your first habit to begin your journey.",
     "fieldTitle": "Title",
     "fieldDescription": "Description",

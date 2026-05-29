@@ -107,6 +107,8 @@
     "questLogHint": "اختر مهمة للانتقال إليها",
     "addHabit": "أضف عادة",
     "editHabit": "تعديل العادة",
+    "archiveHabit": "أرشفة",
+    "moreActions": "المزيد من الإجراءات",
     "empty": "لا توجد عادات بعد. أضف عادتك الأولى للبدء.",
     "fieldTitle": "العنوان",
     "fieldDescription": "الوصف",
