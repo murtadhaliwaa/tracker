@@ -284,6 +284,7 @@
     "lifeBalance": "Life Balance",
     "meditationTrend": "Meditation Trend",
     "activityHeatmap": "Activity Heatmap",
+    "heatmapSubtitle": "Last 12 weeks of habit completions",
     "heatmapMon": "Mon",
     "heatmapTue": "Tue",
     "heatmapWed": "Wed",

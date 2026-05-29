@@ -80,9 +80,11 @@ function ChartFrame({
       className={cn("w-full min-w-0 max-w-full overflow-hidden", className)}
       style={{ height }}
     >
-      <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={50}>
-        {children}
-      </ResponsiveContainer>
+      {children ? (
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={50}>
+          {children}
+        </ResponsiveContainer>
+      ) : null}
     </div>
   );
 }
@@ -217,8 +219,9 @@ export function StatsClient({ weeklyXp, radar, meditationTrend: initialTrend, he
         </ChartFrame>
       </RPGCard>
 
-      <RPGCard className="min-w-0 overflow-hidden">
-        <h2 className="rpg-section-heading mb-4 text-rpg-gold">{t("activityHeatmap")}</h2>
+      <RPGCard className="min-w-0">
+        <h2 className="rpg-section-heading mb-1 text-rpg-gold">{t("activityHeatmap")}</h2>
+        <p className="mb-4 text-sm text-rpg-secondary">{t("heatmapSubtitle")}</p>
         <ActivityHeatmap days={heatmapDays} />
       </RPGCard>
     </div>

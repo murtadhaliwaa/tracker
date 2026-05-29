@@ -318,15 +318,29 @@ export function HabitsClient({ habits: initialHabits, categories }: Props) {
     });
   };
 
-  const onDragEnd = (period: keyof typeof grouped) => (event: DragEndEvent) => {
+  const onDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
+
+    const activeHabit = habits.find((h) => h.id === active.id);
+    const overHabit = habits.find((h) => h.id === over.id);
+    if (!activeHabit || !overHabit) return;
+
+    const groupFor = (habit: HabitClientItem): keyof typeof grouped =>
+      habit.isArchived ? "ARCHIVED" : habit.period;
+
+    const period = groupFor(activeHabit);
+    if (period !== groupFor(overHabit)) return;
+
     const items = grouped[period];
     const oldIndex = items.findIndex((h) => h.id === active.id);
     const newIndex = items.findIndex((h) => h.id === over.id);
     const reordered = arrayMove(items, oldIndex, newIndex);
     setHabits((prev) => {
-      const others = prev.filter((h) => !(h.period === period && !h.isArchived));
+      const others =
+        period === "ARCHIVED"
+          ? prev.filter((h) => !h.isArchived)
+          : prev.filter((h) => h.isArchived || h.period !== period);
       return [...others, ...reordered.map((h, idx) => ({ ...h, order: idx + 1 }))];
     });
     startTransition(async () => {
@@ -346,6 +360,69 @@ export function HabitsClient({ habits: initialHabits, categories }: Props) {
   };
 
   const empty = habits.length === 0;
+
+  const periodSections = (Object.entries(grouped) as [keyof typeof grouped, HabitClientItem[]][]).map(
+    ([period, items]) => {
+      if (period !== "ARCHIVED" && items.length === 0) return null;
+      if (period === "ARCHIVED" && items.length === 0) return null;
+      const dailyPerfect = period === "DAILY" && items.length > 0 && items.every((h) => h.completedToday);
+
+      return (
+        <RPGCard key={period} glow={period === "DAILY" ? (dailyPerfect ? "gold" : "teal") : "purple"}>
+          <div className="flex items-center gap-3">
+            <p className="text-sm tracking-wide text-rpg-text">{periodLabels[period]}</p>
+            <span className="rounded-full border border-[#1e1e3a] bg-[#0f0f1a] px-2 py-0.5 text-[11px] text-rpg-secondary">
+              {items.length}
+            </span>
+          </div>
+          <SortableContext items={items.map((h) => h.id)} strategy={verticalListSortingStrategy}>
+            <div className="mt-3 space-y-2">
+              {items.map((habit) => (
+                <SortableHabitRow
+                  key={habit.id}
+                  habit={habit}
+                  accentContext={items}
+                  archived={period === "ARCHIVED"}
+                  onEdit={() => {
+                    const freq = parseFrequency(habit.frequency);
+                    setEditHabit({
+                      id: habit.id,
+                      title: habit.title,
+                      description: habit.description ?? "",
+                      period: habit.period,
+                      logType: habit.logType,
+                      categoryName: habit.category ?? "",
+                      xpValue: habit.xpValue,
+                      icon: habit.icon,
+                      color: habit.color,
+                      ...freq,
+                    });
+                    setFormOpen(true);
+                  }}
+                  onDelete={() => setDeleteId(habit.id)}
+                  onArchive={() => {
+                    startTransition(async () => {
+                      await archiveHabit(habit.id);
+                      toast.success(t("archived"));
+                      refresh();
+                    });
+                  }}
+                  onUnarchive={() => {
+                    startTransition(async () => {
+                      await unarchiveHabit(habit.id);
+                      toast.success(t("unarchived"));
+                      refresh();
+                    });
+                  }}
+                  onComplete={(notes, duration, deepFocus) => handleComplete(habit, notes, duration, deepFocus)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </RPGCard>
+      );
+    },
+  );
 
   return (
     <div className="space-y-5">
@@ -389,69 +466,9 @@ export function HabitsClient({ habits: initialHabits, categories }: Props) {
         </RPGCard>
       ) : null}
 
-      {(Object.entries(grouped) as [keyof typeof grouped, HabitClientItem[]][]).map(([period, items]) => {
-        if (period !== "ARCHIVED" && items.length === 0) return null;
-        if (period === "ARCHIVED" && items.length === 0) return null;
-        const dailyPerfect =
-          period === "DAILY" && items.length > 0 && items.every((h) => h.completedToday);
-
-        return (
-          <RPGCard key={period} glow={period === "DAILY" ? (dailyPerfect ? "gold" : "teal") : "purple"}>
-            <div className="flex items-center gap-3">
-              <p className="text-sm tracking-wide text-rpg-text">{periodLabels[period]}</p>
-              <span className="rounded-full border border-[#1e1e3a] bg-[#0f0f1a] px-2 py-0.5 text-[11px] text-rpg-secondary">
-                {items.length}
-              </span>
-            </div>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd(period)}>
-              <SortableContext items={items.map((h) => h.id)} strategy={verticalListSortingStrategy}>
-                <div className="mt-3 space-y-2">
-                  {items.map((habit) => (
-                    <SortableHabitRow
-                      key={habit.id}
-                      habit={habit}
-                      accentContext={items}
-                      archived={period === "ARCHIVED"}
-                      onEdit={() => {
-                        const freq = parseFrequency(habit.frequency);
-                        setEditHabit({
-                          id: habit.id,
-                          title: habit.title,
-                          description: habit.description ?? "",
-                          period: habit.period,
-                          logType: habit.logType,
-                          categoryName: habit.category ?? "",
-                          xpValue: habit.xpValue,
-                          icon: habit.icon,
-                          color: habit.color,
-                          ...freq,
-                        });
-                        setFormOpen(true);
-                      }}
-                      onDelete={() => setDeleteId(habit.id)}
-                      onArchive={() => {
-                        startTransition(async () => {
-                          await archiveHabit(habit.id);
-                          toast.success(t("archived"));
-                          refresh();
-                        });
-                      }}
-                      onUnarchive={() => {
-                        startTransition(async () => {
-                          await unarchiveHabit(habit.id);
-                          toast.success(t("unarchived"));
-                          refresh();
-                        });
-                      }}
-                      onComplete={(notes, duration, deepFocus) => handleComplete(habit, notes, duration, deepFocus)}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          </RPGCard>
-        );
-      })}
+      <DndContext id="life-rpg-habits" sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        {periodSections}
+      </DndContext>
 
       <HabitFormDialog
         open={formOpen}

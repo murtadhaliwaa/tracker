@@ -153,7 +153,9 @@ export function SettingsClient({ preferredLanguage, totalXP, notifications, rewa
           {notifications.map((n) => (
             <div key={n.id} className="flex items-center justify-between gap-4 rounded-lg border border-[#1e1e3a] bg-[#0f0f1a] p-3">
               <div className="min-w-0">
-                <p className="truncate text-sm text-rpg-text">{n.habitTitle}</p>
+                <p className="truncate font-sans text-sm text-rpg-text" dir="auto">
+                  {n.habitTitle}
+                </p>
                 <p className="text-xs text-rpg-secondary">{n.time}</p>
               </div>
               <Switch
@@ -240,7 +242,9 @@ export function SettingsClient({ preferredLanguage, totalXP, notifications, rewa
                     </Button>
                   </div>
                 </div>
-                <p className="mt-3 font-heading text-base text-rpg-text">{r.title}</p>
+                <p className="mt-3 font-sans text-base text-rpg-text" dir="auto">
+                  {r.title}
+                </p>
                 {r.description ? <p className="mt-1 text-xs text-rpg-secondary">{r.description}</p> : null}
                 <div className="mt-4 flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold text-rpg-gold">{t("xpCost", { cost: r.xpCost })}</span>
@@ -278,11 +282,17 @@ export function SettingsClient({ preferredLanguage, totalXP, notifications, rewa
                     <div className="flex size-11 items-center justify-center rounded-lg border border-[#1e1e3a] bg-[#0f0f1a] text-2xl">
                       {r.emoji}
                     </div>
-                    <span className="rounded-full border border-rpg-green/40 bg-rpg-green/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-rpg-green">
+                    <span
+                      className={`rounded-full border border-rpg-green/40 bg-rpg-green/20 px-2.5 py-0.5 text-[11px] font-bold text-rpg-green ${
+                        preferredLanguage === "ar" ? "" : "uppercase tracking-wide"
+                      }`}
+                    >
                       {t("redeemed")}
                     </span>
                   </div>
-                  <p className="mt-3 font-heading text-base text-rpg-text">{r.title}</p>
+                  <p className="mt-3 font-sans text-base text-rpg-text" dir="auto">
+                  {r.title}
+                </p>
                   {r.description ? <p className="mt-1 text-xs text-rpg-secondary">{r.description}</p> : null}
                   <p className="mt-3 text-xs text-rpg-secondary">
                     {t("xpCost", { cost: r.xpCost })}

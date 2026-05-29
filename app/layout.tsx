@@ -40,6 +40,9 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "Life RPG",
   },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
   icons: {
     icon: [
       { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },

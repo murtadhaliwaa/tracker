@@ -194,6 +194,12 @@
   h4 {
     font-family: var(--font-cinzel);
   }
+  [dir="rtl"] h1,
+  [dir="rtl"] h2,
+  [dir="rtl"] h3,
+  [dir="rtl"] h4 {
+    font-family: var(--font-arabic), var(--font-inter), sans-serif;
+  }
 }
 
 ::selection {

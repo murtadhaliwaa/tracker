@@ -60,6 +60,10 @@ export function PwaInstallPrompt() {
     }
 
     const onBeforeInstall = (event: Event) => {
+      // Custom banner is mobile-only; on desktop let Chrome show its native install UI
+      // so we avoid capturing the event and logging "Banner not shown" on every navigation.
+      if (window.matchMedia("(min-width: 768px)").matches) return;
+
       event.preventDefault();
       setDeferredPrompt(event as BeforeInstallPromptEvent);
       setVisible(true);

@@ -1,8 +1,18 @@
+import dynamic from "next/dynamic";
 import { prisma } from "@/lib/prisma";
 import { getViewerContext } from "@/lib/viewer";
 import { todayLogFilter } from "@/lib/habit-day";
-import { HabitsClient, type HabitClientItem } from "@/components/habits/habits-client";
+import type { HabitClientItem } from "@/components/habits/habits-client";
 import type { HabitFrequency } from "@/lib/habit-display";
+import { PageLoading } from "@/components/ui/page-loading";
+
+const HabitsClient = dynamic(
+  () => import("@/components/habits/habits-client").then((mod) => mod.HabitsClient),
+  {
+    ssr: false,
+    loading: () => <PageLoading variant="habits" />,
+  },
+);
 
 export default async function HabitsPage() {
   const viewer = await getViewerContext();

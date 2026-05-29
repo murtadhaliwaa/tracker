@@ -1,9 +1,12 @@
 "use client";
 
 import { type ReactNode, useSyncExternalStore } from "react";
+import { useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
 import BlurText from "@/components/BlurText";
 import { prefersReducedMotion } from "@/components/react-bits/rpg-theme";
+
+const ARABIC_RE = /[\u0600-\u06FF]/;
 
 type Props = {
   title: ReactNode;
@@ -25,8 +28,14 @@ function useReducedMotion() {
 }
 
 export function RPGPageHeader({ title, subtitle, action, className }: Props) {
+  const locale = useLocale();
   const reducedMotion = useReducedMotion();
   const titleIsString = typeof title === "string";
+  const animateTitle =
+    titleIsString &&
+    !reducedMotion &&
+    locale !== "ar" &&
+    !ARABIC_RE.test(title);
 
   return (
     <div className={cn("mb-8 flex items-start justify-between gap-4", className)}>
@@ -35,7 +44,7 @@ export function RPGPageHeader({ title, subtitle, action, className }: Props) {
           <div className="rpg-header-accent relative h-0.5 w-14 bg-[rgba(212,175,55,0.35)]">
             <span className="absolute -right-2 top-1/2 size-3.5 -translate-y-1/2 rotate-45 rounded-[2px] bg-rpg-gold shadow-[0_0_18px_rgba(212,175,55,0.35)]" />
           </div>
-          {titleIsString && !reducedMotion ? (
+          {animateTitle ? (
             <h1 className="rpg-page-title text-rpg-gold">
               <BlurText
                 text={title}

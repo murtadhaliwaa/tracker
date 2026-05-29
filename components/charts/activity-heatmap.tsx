@@ -1,7 +1,14 @@
 "use client";
 
-import { format, subDays, eachDayOfInterval, getDay, addWeeks, startOfDay } from "date-fns";
-import { useMemo, useState } from "react";
+import {
+  addWeeks,
+  eachDayOfInterval,
+  format,
+  getDay,
+  startOfDay,
+  subDays,
+} from "date-fns";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 export type HeatmapDay = {
@@ -11,11 +18,12 @@ export type HeatmapDay = {
 
 type Props = {
   days: HeatmapDay[];
+  /** When set, overrides responsive week count. */
+  weeks?: number;
 };
 
-const CELL = 12;
 const GAP = 3;
-const WEEK_WIDTH = CELL + GAP;
+const LABEL_WIDTH = 28;
 
 function colorForCount(count: number): string {
   if (count <= 0) return "#1e1e3a";
@@ -25,9 +33,94 @@ function colorForCount(count: number): string {
   return "#9b7de0";
 }
 
-export function ActivityHeatmap({ days }: Props) {
+function useResponsiveWeekCount(explicit?: number) {
+  const [weekCount, setWeekCount] = useState(explicit ?? 12);
+
+  useEffect(() => {
+    if (explicit != null) {
+      setWeekCount(explicit);
+      return;
+    }
+
+    const md = window.matchMedia("(min-width: 768px)");
+    const lg = window.matchMedia("(min-width: 1024px)");
+
+    const update = () => {
+      if (lg.matches) setWeekCount(26);
+      else if (md.matches) setWeekCount(16);
+      else setWeekCount(12);
+    };
+
+    update();
+    md.addEventListener("change", update);
+    lg.addEventListener("change", update);
+    return () => {
+      md.removeEventListener("change", update);
+      lg.removeEventListener("change", update);
+    };
+  }, [explicit]);
+
+  return weekCount;
+}
+
+function useContainerWidth() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+
+    const measure = () => {
+      setWidth(node.getBoundingClientRect().width);
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  return { ref, width };
+}
+
+function buildWeekGrid(countMap: Map<string, number>, weekCount: number) {
+  const end = startOfDay(new Date());
+  const start = subDays(end, weekCount * 7 - 1);
+  const allDays = eachDayOfInterval({ start, end });
+  const weeks: { date: Date; count: number }[][] = [];
+
+  let currentWeek: { date: Date; count: number }[] = [];
+  const firstDay = allDays[0]!;
+  const pad = (getDay(firstDay) + 6) % 7;
+  for (let i = 0; i < pad; i++) {
+    currentWeek.push({ date: subDays(firstDay, pad - i), count: -1 });
+  }
+
+  for (const date of allDays) {
+    const key = format(date, "yyyy-MM-dd");
+    currentWeek.push({ date, count: countMap.get(key) ?? 0 });
+    if (currentWeek.length === 7) {
+      weeks.push(currentWeek);
+      currentWeek = [];
+    }
+  }
+
+  if (currentWeek.length) {
+    while (currentWeek.length < 7) {
+      currentWeek.push({ date: addWeeks(end, 1), count: -1 });
+    }
+    weeks.push(currentWeek);
+  }
+
+  return weeks;
+}
+
+export function ActivityHeatmap({ days, weeks: weeksProp }: Props) {
   const t = useTranslations("stats");
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
+  const weekCount = useResponsiveWeekCount(weeksProp);
+  const { ref: containerRef, width: containerWidth } = useContainerWidth();
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
   const dayLabels = [
     t("heatmapMon"),
@@ -40,129 +133,104 @@ export function ActivityHeatmap({ days }: Props) {
   ];
 
   const countMap = useMemo(() => new Map(days.map((d) => [d.date, d.count])), [days]);
+  const grid = useMemo(() => buildWeekGrid(countMap, weekCount), [countMap, weekCount]);
 
-  const grid = useMemo(() => {
-    const end = startOfDay(new Date());
-    const start = subDays(end, 364);
-    const allDays = eachDayOfInterval({ start, end });
-    const weeks: { date: Date; count: number }[][] = [];
+  const columns = grid.length;
+  const availableWidth = Math.max(containerWidth - LABEL_WIDTH, 0);
+  const fitCellSize =
+    columns > 0
+      ? Math.floor((availableWidth - (columns - 1) * GAP) / columns)
+      : 12;
 
-    let currentWeek: { date: Date; count: number }[] = [];
-    const firstDay = allDays[0];
-    const pad = (getDay(firstDay) + 6) % 7;
-    for (let i = 0; i < pad; i++) {
-      currentWeek.push({ date: subDays(firstDay, pad - i), count: -1 });
-    }
+  // Scale cells to fill the card width — avoids broken layout inside overflow-x-hidden shells.
+  const cellSize = Math.max(8, Math.min(20, fitCellSize || 12));
 
-    for (const date of allDays) {
-      const key = format(date, "yyyy-MM-dd");
-      currentWeek.push({ date, count: countMap.get(key) ?? 0 });
-      if (currentWeek.length === 7) {
-        weeks.push(currentWeek);
-        currentWeek = [];
-      }
-    }
-    if (currentWeek.length) {
-      while (currentWeek.length < 7) {
-        currentWeek.push({ date: addWeeks(end, 1), count: -1 });
-      }
-      weeks.push(currentWeek);
-    }
-
-    return weeks.slice(-53);
-  }, [countMap]);
-
-  const monthLabels = useMemo(() => {
-    const labels: { label: string; col: number }[] = [];
+  const monthByColumn = useMemo(() => {
     let lastMonth = "";
-    grid.forEach((week, col) => {
+    return grid.map((week) => {
       const valid = week.find((d) => d.count >= 0);
-      if (!valid) return;
+      if (!valid) return { label: "", show: false };
       const month = format(valid.date, "MMM");
-      if (month !== lastMonth) {
-        labels.push({ label: month, col });
-        lastMonth = month;
-      }
+      if (month === lastMonth) return { label: month, show: false };
+      lastMonth = month;
+      return { label: month, show: true };
     });
-    return labels;
   }, [grid]);
 
   const todayKey = format(new Date(), "yyyy-MM-dd");
-  const labelColumnWidth = 32;
 
   return (
-    <>
-      <div className="w-full max-w-full overflow-x-auto pb-2">
-        <div className="min-w-max">
-          <div className="mb-2 flex" style={{ paddingInlineStart: `${labelColumnWidth}px` }}>
-            {monthLabels.map((m) => (
-              <span
-                key={`${m.label}-${m.col}`}
-                className="shrink-0 text-[10px] text-[#8888aa]"
-                style={{ marginInlineStart: m.col === 0 ? 0 : `${m.col * WEEK_WIDTH - 8}px` }}
+    <div ref={containerRef} className="w-full min-w-0">
+      <div className="overflow-hidden pb-1">
+        <div>
+          {/* Month row — one column per week */}
+          <div className="mb-1 flex" style={{ gap: GAP, paddingInlineStart: LABEL_WIDTH }}>
+            {monthByColumn.map((month, wi) => (
+              <div
+                key={wi}
+                className="shrink-0 overflow-hidden text-[10px] leading-none text-[#8888aa]"
+                style={{ width: cellSize, height: 14 }}
               >
-                {m.label}
-              </span>
+                {month.show ? month.label : null}
+              </div>
             ))}
           </div>
-          <div className="flex gap-1">
+
+          <div className="flex" style={{ gap: GAP }}>
+            {/* Day labels — Mon / Wed / Fri only (GitHub-style) */}
             <div
-              className="flex shrink-0 flex-col gap-[3px] pt-[2px]"
-              style={{ width: labelColumnWidth }}
+              className="flex shrink-0 flex-col"
+              style={{ width: LABEL_WIDTH, gap: GAP, paddingTop: 1 }}
             >
-              {dayLabels.map((label) => (
+              {dayLabels.map((label, rowIdx) => (
                 <span
                   key={label}
                   className="flex items-center text-[10px] leading-none text-[#8888aa]"
-                  style={{ height: CELL }}
+                  style={{ height: cellSize }}
                 >
-                  {label}
+                  {rowIdx === 0 || rowIdx === 2 || rowIdx === 4 ? label : ""}
                 </span>
               ))}
             </div>
-            <div className="flex shrink-0 gap-[3px]">
+
+            {/* Week columns */}
+            <div className="flex shrink-0" style={{ gap: GAP }}>
               {grid.map((week, wi) => (
-                <div key={wi} className="flex shrink-0 flex-col gap-[3px]">
+                <div key={wi} className="flex shrink-0 flex-col" style={{ gap: GAP }}>
                   {week.map((cell, di) => {
                     if (cell.count < 0) {
                       return (
                         <div
                           key={di}
-                          className="shrink-0 rounded-[2px] bg-transparent"
-                          style={{ width: CELL, height: CELL }}
+                          className="shrink-0 rounded-[3px] bg-transparent"
+                          style={{ width: cellSize, height: cellSize }}
                         />
                       );
                     }
+
                     const key = format(cell.date, "yyyy-MM-dd");
                     const isToday = key === todayKey;
+                    const isActive = activeTooltip === key;
+                    const tooltipText = t("heatmapTooltip", {
+                      date: format(cell.date, "PP"),
+                      count: cell.count,
+                    });
+
                     return (
                       <button
                         key={di}
                         type="button"
-                        className="shrink-0 rounded-[2px] transition hover:brightness-125"
+                        className="shrink-0 rounded-[3px] transition hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-rpg-gold"
                         style={{
-                          width: CELL,
-                          height: CELL,
+                          width: cellSize,
+                          height: cellSize,
                           background: colorForCount(cell.count),
-                          outline: isToday ? "2px solid #f0c040" : undefined,
+                          outline: isToday ? "2px solid #f0c040" : isActive ? "2px solid #e8e8f0" : undefined,
                           outlineOffset: "1px",
                         }}
-                        onMouseEnter={(e) => {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setTooltip({
-                            x: rect.left + rect.width / 2,
-                            y: rect.top,
-                            text: t("heatmapTooltip", {
-                              date: format(cell.date, "PP"),
-                              count: cell.count,
-                            }),
-                          });
-                        }}
-                        onMouseLeave={() => setTooltip(null)}
-                        aria-label={t("heatmapTooltip", {
-                          date: format(cell.date, "PP"),
-                          count: cell.count,
-                        })}
+                        onClick={() => setActiveTooltip((prev) => (prev === key ? null : key))}
+                        aria-label={tooltipText}
+                        aria-pressed={isActive}
                       />
                     );
                   })}
@@ -172,21 +240,35 @@ export function ActivityHeatmap({ days }: Props) {
           </div>
         </div>
       </div>
-      <div className="mt-3 flex items-center gap-2 text-[10px] text-[#8888aa]">
+
+      {activeTooltip ? (
+        <p className="mt-2 text-center text-xs text-rpg-secondary">
+          {(() => {
+            const cell = grid.flat().find((d) => d.count >= 0 && format(d.date, "yyyy-MM-dd") === activeTooltip);
+            if (!cell) return null;
+            return t("heatmapTooltip", {
+              date: format(cell.date, "PP"),
+              count: cell.count,
+            });
+          })()}
+        </p>
+      ) : null}
+
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-2 text-[10px] text-[#8888aa] sm:justify-start">
         <span>{t("heatmapLess")}</span>
         {[0, 1, 2, 3, 4].map((c) => (
-          <span key={c} className="size-3 rounded-[2px]" style={{ background: colorForCount(c === 0 ? 0 : c) }} />
+          <span
+            key={c}
+            className="rounded-[3px]"
+            style={{
+              width: Math.max(cellSize, 12),
+              height: Math.max(cellSize, 12),
+              background: colorForCount(c === 0 ? 0 : c),
+            }}
+          />
         ))}
         <span>{t("heatmapMore")}</span>
       </div>
-      {tooltip ? (
-        <div
-          className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-full rounded bg-[#13131f] px-2 py-1 text-xs text-[#e8e8f0] shadow-lg"
-          style={{ left: tooltip.x, top: tooltip.y - 8 }}
-        >
-          {tooltip.text}
-        </div>
-      ) : null}
-    </>
+    </div>
   );
 }

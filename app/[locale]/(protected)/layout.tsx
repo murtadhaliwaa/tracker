@@ -1,8 +1,5 @@
-import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { AppShellLoader } from "@/components/gamification/app-shell-loader";
-import { AppShellSkeleton } from "@/components/gamification/app-shell-skeleton";
-import { PageLoading } from "@/components/ui/page-loading";
 import { getViewerContext } from "@/lib/viewer";
 
 export default async function ProtectedLayout({
@@ -20,16 +17,8 @@ export default async function ProtectedLayout({
   }
 
   return (
-    <Suspense
-      fallback={
-        <AppShellSkeleton isRtl={locale === "ar"}>
-          <PageLoading variant="default" />
-        </AppShellSkeleton>
-      }
-    >
-      <AppShellLoader userId={viewer.userId} locale={locale}>
-        {children}
-      </AppShellLoader>
-    </Suspense>
+    <AppShellLoader userId={viewer.userId} locale={locale}>
+      {children}
+    </AppShellLoader>
   );
 }

@@ -213,8 +213,8 @@ export function ProfileClient(props: Props) {
       <RPGCard glow="purple" className="p-5">
         <h2 className="font-heading text-lg text-rpg-heading">{t("activityHeatmap")}</h2>
         <p className="mt-1 text-sm text-rpg-secondary">{t("heatmapSubtitle")}</p>
-        <div className="mt-4">
-          <ActivityHeatmap days={props.heatmapDays} />
+        <div className="mt-4 min-w-0">
+          <ActivityHeatmap days={props.heatmapDays} weeks={12} />
         </div>
       </RPGCard>
 

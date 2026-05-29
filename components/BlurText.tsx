@@ -43,7 +43,12 @@ const BlurText: React.FC<BlurTextProps> = ({
   onAnimationComplete,
   stepDuration = 0.35
 }) => {
-  const elements = animateBy === 'words' ? text.split(' ') : text.split('');
+  const hasArabic = /[\u0600-\u06FF]/.test(text);
+  const elements = hasArabic
+    ? [text]
+    : animateBy === 'words'
+      ? text.split(' ')
+      : text.split('');
   const [inView, setInView] = useState(false);
   const ref = useRef<HTMLParagraphElement>(null);
 
