@@ -108,6 +108,16 @@ export const updateHabitSchema = habitFormSchema.extend({ id: z.string().cuid() 
 export const updateCourseSchema = courseFormSchema.extend({ id: z.string().cuid() });
 export const updateRewardSchema = rewardFormSchema.extend({ id: z.string().cuid() });
 
+export const todoFormSchema = z.object({
+  id: z.string().cuid().optional(),
+  title: z.string().trim().min(1).max(200),
+  description: z.string().max(1000).optional(),
+  dueDate: z.coerce.date().nullable().optional(),
+  priority: z.enum(["NORMAL", "HIGH"]).default("NORMAL"),
+});
+
+export const updateTodoSchema = todoFormSchema.extend({ id: z.string().cuid() });
+
 export const recoveryQuestSchema = z.object({
   habitId: z.string().cuid(),
 });

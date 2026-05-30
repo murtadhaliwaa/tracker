@@ -23,6 +23,7 @@ export type XpReason =
   | "meditation"
   | "reading"
   | "weekly_review"
+  | "todo_complete"
   | "reward_redeem";
 
 export type AwardXpResult = {

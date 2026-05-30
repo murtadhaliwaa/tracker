@@ -1,19 +1,16 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireViewer } from "@/lib/action-utils";
 import { awardXP } from "@/lib/xp";
 import { checkAndUnlockAchievements } from "@/lib/achievement-engine";
+import { revalidateLocalePaths } from "@/lib/revalidate-paths";
 import { updateWeeklyReviewSchema, weeklyReviewSchema } from "@/lib/validators";
 
 const REVIEW_XP = 50;
 
 function revalidateReviewPages() {
-  revalidatePath("/en/review");
-  revalidatePath("/ar/review");
-  revalidatePath("/en", "layout");
-  revalidatePath("/ar", "layout");
+  revalidateLocalePaths("/review");
 }
 
 function toAnswers(parsed: {
@@ -46,10 +43,10 @@ export async function createWeeklyReview(input: unknown) {
     });
 
     const xpResult = await awardXP(tx, viewer.userId, REVIEW_XP, "weekly_review", 1);
-    const unlockedAchievements = await checkAndUnlockAchievements(viewer.userId, tx);
-    return { reflection, ...xpResult, unlockedAchievements };
+    return { reflection, ...xpResult };
   });
 
+  void checkAndUnlockAchievements(viewer.userId).catch(() => undefined);
   revalidateReviewPages();
   return result;
 }

@@ -36,6 +36,13 @@ const nextConfig = {
   poweredByHeader: false,
   experimental: {
     cssChunking: "strict",
+    optimizePackageImports: [
+      "lucide-react",
+      "date-fns",
+      "recharts",
+      "@dnd-kit/core",
+      "@dnd-kit/sortable",
+    ],
   },
   async headers() {
     const headers = [...baseSecurityHeaders];

@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
+import { patchShellFromAward } from "@/lib/shell-stats-client";
 import {
   DndContext,
   closestCenter,
@@ -346,7 +346,6 @@ function SortableHabitRow({
 
 export function HabitsClient({ habits: initialHabits, categories }: Props) {
   const t = useTranslations("habits");
-  const router = useRouter();
   const [habits, setHabits] = useState(initialHabits);
   const [formOpen, setFormOpen] = useState(false);
   const [editHabit, setEditHabit] = useState<HabitFormValues | null>(null);
@@ -367,8 +366,6 @@ export function HabitsClient({ habits: initialHabits, categories }: Props) {
     };
   }, [habits]);
 
-  const refresh = useCallback(() => router.refresh(), [router]);
-
   const handleComplete = (habit: HabitClientItem, notes?: string, duration?: number, deepFocus?: boolean) => {
     startTransition(async () => {
       try {
@@ -383,9 +380,9 @@ export function HabitsClient({ habits: initialHabits, categories }: Props) {
           prev.map((h) => (h.id === habit.id ? { ...h, completedToday: true, currentStreak: h.currentStreak + 1 } : h)),
         );
         toast.success(t("habitLogged", { xp: result.xpAwarded }));
+        patchShellFromAward(result);
         if (result.leveledUp) setLevelUp({ level: result.newLevel, title: result.newTitle });
         if (result.perfectDay.isPerfectDay && result.perfectDay.bonusAwarded) setPerfectDay(true);
-        refresh();
       } catch {
         toast.error(t("error"));
       }
@@ -421,7 +418,6 @@ export function HabitsClient({ habits: initialHabits, categories }: Props) {
       await updateHabitOrder({
         items: reordered.map((h, idx) => ({ id: h.id, order: idx + 1 })),
       });
-      refresh();
     });
   };
 
@@ -477,15 +473,19 @@ export function HabitsClient({ habits: initialHabits, categories }: Props) {
                   onArchive={() => {
                     startTransition(async () => {
                       await archiveHabit(habit.id);
+                      setHabits((prev) =>
+                        prev.map((h) => (h.id === habit.id ? { ...h, isArchived: true } : h)),
+                      );
                       toast.success(t("archived"));
-                      refresh();
                     });
                   }}
                   onUnarchive={() => {
                     startTransition(async () => {
                       await unarchiveHabit(habit.id);
+                      setHabits((prev) =>
+                        prev.map((h) => (h.id === habit.id ? { ...h, isArchived: false } : h)),
+                      );
                       toast.success(t("unarchived"));
-                      refresh();
                     });
                   }}
                   onComplete={(notes, duration, deepFocus) => handleComplete(habit, notes, duration, deepFocus)}
@@ -549,7 +549,7 @@ export function HabitsClient({ habits: initialHabits, categories }: Props) {
         onOpenChange={setFormOpen}
         categories={categories}
         initial={editHabit}
-        onSaved={refresh}
+        onSaved={() => setFormOpen(false)}
       />
 
       <AlertDialog open={Boolean(deleteId)} onOpenChange={() => setDeleteId(null)}>
@@ -566,9 +566,9 @@ export function HabitsClient({ habits: initialHabits, categories }: Props) {
                 if (!deleteId) return;
                 startTransition(async () => {
                   await deleteHabit(deleteId);
+                  setHabits((prev) => prev.filter((h) => h.id !== deleteId));
                   toast.success(t("deleted"));
                   setDeleteId(null);
-                  refresh();
                 });
               }}
             >

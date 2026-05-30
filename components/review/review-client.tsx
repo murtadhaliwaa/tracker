@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { patchShellFromAward } from "@/lib/shell-stats-client";
 import { toast } from "sonner";
 import { endOfWeek, format, startOfWeek } from "date-fns";
 import { Pencil, Plus, Sparkles, Star } from "lucide-react";
@@ -82,7 +82,6 @@ function parseReview(reflection: {
 export function ReviewClient({ reviews: initialReviews }: Props) {
   const t = useTranslations("review");
   const tc = useTranslations("common");
-  const router = useRouter();
   const [reviews, setReviews] = useState(initialReviews);
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -156,11 +155,11 @@ export function ReviewClient({ reviews: initialReviews }: Props) {
           });
           setReviews((prev) => [item, ...prev]);
           toast.success(t("saved"));
+          patchShellFromAward(result);
           if (result.leveledUp) setLevelUp({ level: result.newLevel, title: result.newTitle });
         }
         setOpen(false);
         setEditForm(null);
-        router.refresh();
       } catch {
         toast.error(tc("error"));
       }

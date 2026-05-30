@@ -1,24 +1,19 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireViewer } from "@/lib/action-utils";
 import { awardXP } from "@/lib/xp";
 import { syncWeeklyBossProgress } from "@/lib/weekly-boss";
 import { checkAndUnlockAchievements } from "@/lib/achievement-engine";
 import { ensureCourseLessons, syncCourseCompletedCount } from "@/lib/course-lessons";
+import { revalidateLocalePaths } from "@/lib/revalidate-paths";
 import { courseFormSchema, updateCourseSchema } from "@/lib/validators";
 
 const LESSON_XP = 100;
 const COURSE_COMPLETE_BONUS = 200;
 
-function revalidateCourses() {
-  revalidatePath("/en/courses");
-  revalidatePath("/ar/courses");
-  revalidatePath("/en/dashboard");
-  revalidatePath("/ar/dashboard");
-  revalidatePath("/en", "layout");
-  revalidatePath("/ar", "layout");
+function revalidateCourses(includeDashboard = false) {
+  revalidateLocalePaths("/courses", ...(includeDashboard ? ["/dashboard"] as const : []));
 }
 
 export async function createCourse(input: unknown) {
@@ -131,7 +126,6 @@ export async function toggleLessonComplete(lessonId: string) {
       leveledUp = leveledUp || bonusXpResult.leveledUp;
       newLevel = bonusXpResult.leveledUp ? bonusXpResult.newLevel : newLevel;
       newTitle = bonusXpResult.leveledUp ? bonusXpResult.newTitle : newTitle;
-      unlockedAchievements = await checkAndUnlockAchievements(viewer.userId, tx);
     }
 
     return {
@@ -145,13 +139,16 @@ export async function toggleLessonComplete(lessonId: string) {
       leveledUp,
       newLevel,
       newTitle,
-      unlockedAchievements,
+      currentXP: lessonXpResult.currentXP,
+      xpToNextLevel: lessonXpResult.xpToNextLevel,
+      unlockedAchievements: [] as string[],
     };
   });
 
+  void checkAndUnlockAchievements(viewer.userId).catch(() => undefined);
   const bossResult = await syncWeeklyBossProgress(viewer.userId);
 
-  revalidateCourses();
+  revalidateCourses(true);
   return {
     ...result,
     bossCurrentValue: bossResult.boss.currentValue,

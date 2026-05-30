@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { dispatchShellStats } from "@/lib/shell-stats-client";
 import {
   Pencil,
   Flame,
@@ -102,19 +102,21 @@ export function ProfileClient(props: Props) {
   const t = useTranslations("profile");
   const ta = useTranslations("achievements");
   const tc = useTranslations("common");
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [profileName, setProfileName] = useState(props.name);
+  const [avatarStyle, setAvatarStyle] = useState(props.avatarStyle);
   const [editingName, setEditingName] = useState(false);
   const [inlineName, setInlineName] = useState(props.name ?? "");
   const [editOpen, setEditOpen] = useState(false);
 
-  const displayName = getPlayerDisplayName(props.name, t("playerFallback"));
+  const displayName = getPlayerDisplayName(profileName, t("playerFallback"));
 
   const saveInlineName = () => {
     startTransition(async () => {
       await updateProfileName(inlineName);
+      setProfileName(inlineName.trim());
+      dispatchShellStats({ playerName: inlineName.trim() });
       setEditingName(false);
-      router.refresh();
     });
   };
 
@@ -124,7 +126,7 @@ export function ProfileClient(props: Props) {
 
       <RPGCard glow="gold" className="p-6">
         <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-          <PlayerAvatar name={props.name} avatarStyle={props.avatarStyle} size="md" />
+          <PlayerAvatar name={profileName} avatarStyle={avatarStyle} size="md" />
 
           <div className="flex-1 space-y-3 text-center sm:text-start">
             {editingName ? (
@@ -146,7 +148,7 @@ export function ProfileClient(props: Props) {
                 type="button"
                 className="group inline-flex items-center gap-2"
                 onClick={() => {
-                  setInlineName(props.name ?? "");
+                  setInlineName(profileName ?? "");
                   setEditingName(true);
                 }}
               >
@@ -244,11 +246,15 @@ export function ProfileClient(props: Props) {
         <ProfileEditDialog
           open={editOpen}
           onOpenChange={setEditOpen}
-          name={props.name}
-          avatarStyle={props.avatarStyle}
+          name={profileName}
+          avatarStyle={avatarStyle}
           level={props.level}
           characterTitle={props.title}
-          onSaved={() => router.refresh()}
+          onSaved={(saved) => {
+            setProfileName(saved.name);
+            setAvatarStyle(saved.avatarStyle);
+            dispatchShellStats({ playerName: saved.name });
+          }}
         />
       ) : null}
     </div>

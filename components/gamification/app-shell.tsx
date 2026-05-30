@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { translateLevelTitle } from "@/lib/level-display";
+import { SHELL_STATS_EVENT, type ShellStatsPatch } from "@/lib/shell-stats-client";
 import { PlayerCard } from "@/components/gamification/player-card";
 import {
   AlertDialog,
@@ -22,6 +23,7 @@ import {
   Brain,
   Flame,
   Gamepad2,
+  ListTodo,
   Menu,
   Settings,
   ScrollText,
@@ -36,6 +38,7 @@ const links = [
   "dashboard",
   "profile",
   "habits",
+  "todos",
   "stats",
   "courses",
   "mind",
@@ -81,8 +84,38 @@ export function AppShell({
   const isAr = locale === "ar";
   const [menuOpen, setMenuOpen] = useState(false);
   const [streakInfoOpen, setStreakInfoOpen] = useState(false);
+  const [stats, setStats] = useState({
+    playerName,
+    playerLevel,
+    playerTitle,
+    currentXP,
+    xpToNextLevel,
+    streakDays,
+    freezesAvailable,
+  });
 
-  const displayTitle = useDisplayTitle(playerTitle);
+  useEffect(() => {
+    setStats({
+      playerName,
+      playerLevel,
+      playerTitle,
+      currentXP,
+      xpToNextLevel,
+      streakDays,
+      freezesAvailable,
+    });
+  }, [playerName, playerLevel, playerTitle, currentXP, xpToNextLevel, streakDays, freezesAvailable, avatarStyle]);
+
+  useEffect(() => {
+    const onStatsUpdate = (event: Event) => {
+      const patch = (event as CustomEvent<ShellStatsPatch>).detail;
+      if (patch) setStats((prev) => ({ ...prev, ...patch }));
+    };
+    window.addEventListener(SHELL_STATS_EVENT, onStatsUpdate);
+    return () => window.removeEventListener(SHELL_STATS_EVENT, onStatsUpdate);
+  }, []);
+
+  const displayTitle = useDisplayTitle(stats.playerTitle);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -103,6 +136,8 @@ export function AppShell({
         return <User className="size-4 shrink-0" />;
       case "habits":
         return <Gamepad2 className="size-4 shrink-0" />;
+      case "todos":
+        return <ListTodo className="size-4 shrink-0" />;
       case "stats":
         return <BarChart3 className="size-4 shrink-0" />;
       case "courses":
@@ -140,9 +175,9 @@ export function AppShell({
     >
       <Shield className={cn("shrink-0 text-rpg-gold", compact ? "size-3.5" : "size-4")} />
       {compact ? (
-        <span className="text-[10px] font-medium text-rpg-gold">{streakDays}</span>
+        <span className="text-[10px] font-medium text-rpg-gold">{stats.streakDays}</span>
       ) : (
-        <p className="text-xs font-medium text-rpg-gold">{ts("streakCount", { count: streakDays })}</p>
+        <p className="text-xs font-medium text-rpg-gold">{ts("streakCount", { count: stats.streakDays })}</p>
       )}
     </button>
   );
@@ -158,11 +193,11 @@ export function AppShell({
       </p>
 
       <PlayerCard
-        playerName={playerName}
+        playerName={stats.playerName}
         playerTitle={displayTitle}
-        playerLevel={playerLevel}
-        currentXP={currentXP}
-        xpToNextLevel={xpToNextLevel}
+        playerLevel={stats.playerLevel}
+        currentXP={stats.currentXP}
+        xpToNextLevel={stats.xpToNextLevel}
         avatarStyle={avatarStyle}
         isRtl={isAr}
         nameFallback={ts("player")}
@@ -310,9 +345,9 @@ export function AppShell({
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3 text-rpg-secondary">
               <span className="block">{ts("streakBadgeDescription")}</span>
-              <span className="block">{ts("streakBadgeBenefit", { count: freezesAvailable })}</span>
+              <span className="block">{ts("streakBadgeBenefit", { count: stats.freezesAvailable })}</span>
               <span className="block text-sm text-rpg-gold">
-                {ts("streakCount", { count: streakDays })}
+                {ts("streakCount", { count: stats.streakDays })}
               </span>
             </AlertDialogDescription>
           </AlertDialogHeader>

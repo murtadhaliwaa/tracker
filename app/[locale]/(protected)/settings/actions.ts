@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateLocalePaths } from "@/lib/revalidate-paths";
 import { prisma } from "@/lib/prisma";
 import { requireViewer } from "@/lib/action-utils";
 import {
@@ -11,8 +11,7 @@ import {
 } from "@/lib/validators";
 
 function revalidateSettings() {
-  revalidatePath("/en/settings");
-  revalidatePath("/ar/settings");
+  revalidateLocalePaths("/settings");
 }
 
 export async function updatePreferredLanguage(input: unknown) {
@@ -72,7 +71,7 @@ export async function createReward(input: unknown) {
   const viewer = await requireViewer();
   const parsed = rewardFormSchema.parse(input);
 
-  await prisma.rewardVault.create({
+  const reward = await prisma.rewardVault.create({
     data: {
       userId: viewer.userId,
       title: parsed.title,
@@ -83,7 +82,15 @@ export async function createReward(input: unknown) {
   });
 
   revalidateSettings();
-  return { success: true as const };
+  return {
+    reward: {
+      id: reward.id,
+      title: reward.title,
+      description: reward.description,
+      xpCost: reward.xpCost,
+      emoji: reward.emoji,
+    },
+  };
 }
 
 export async function updateReward(input: unknown) {

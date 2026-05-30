@@ -1,9 +1,18 @@
 import { getTranslations } from "next-intl/server";
+import dynamic from "next/dynamic";
 import { prisma } from "@/lib/prisma";
 import { getViewerContext } from "@/lib/viewer";
 import { todayLogFilter } from "@/lib/habit-day";
-import { refreshWeeklyBoss } from "@/lib/weekly-boss";
-import { DashboardClient } from "@/components/dashboard/dashboard-client";
+import { refreshWeeklyBoss, toBossPayload } from "@/lib/weekly-boss";
+import { PageLoading } from "@/components/ui/page-loading";
+
+const DashboardClient = dynamic(
+  () => import("@/components/dashboard/dashboard-client").then((mod) => mod.DashboardClient),
+  {
+    ssr: false,
+    loading: () => <PageLoading variant="dashboard" />,
+  },
+);
 
 export default async function DashboardPage() {
   const t = await getTranslations("dashboard");
@@ -12,7 +21,7 @@ export default async function DashboardPage() {
 
   const todayFilter = todayLogFilter();
 
-  const [user, habitCount, boss] = await Promise.all([
+  const [user, boss] = await Promise.all([
     prisma.user.findUnique({
       where: { id: viewer.userId },
       include: {
@@ -28,9 +37,9 @@ export default async function DashboardPage() {
           },
         },
         streaks: { where: { habitId: null }, take: 1 },
+        _count: { select: { habits: { where: { isArchived: false } } } },
       },
     }),
-    prisma.habit.count({ where: { userId: viewer.userId, isArchived: false } }),
     refreshWeeklyBoss(viewer.userId),
   ]);
 
@@ -47,6 +56,7 @@ export default async function DashboardPage() {
 
   const reflection = user.reflections[0];
   const overallStreak = user.streaks[0];
+  const habitCount = user._count.habits;
   const showOnboarding =
     !user.profile?.onboardingComplete &&
     (user.profile?.totalXP ?? 0) === 0 &&
@@ -74,14 +84,7 @@ export default async function DashboardPage() {
         currentStreak: habit.streak?.currentStreak ?? 0,
         completed: habit.logs.length > 0,
       }))}
-      boss={{
-        title: boss.title,
-        description: boss.description,
-        currentValue: boss.currentValue,
-        targetValue: boss.targetValue,
-        xpReward: boss.xpReward,
-        isCompleted: boss.isCompleted,
-      }}
+      boss={toBossPayload(boss)}
       reflection={
         reflection
           ? {

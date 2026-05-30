@@ -24,11 +24,19 @@ import {
 } from "@/lib/reward-display";
 import { createReward, updateReward } from "@/app/[locale]/(protected)/settings/actions";
 
+type RewardSaved = {
+  id: string;
+  title: string;
+  description: string | null;
+  xpCost: number;
+  emoji: string;
+};
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initial?: RewardFormValues | null;
-  onSaved: () => void;
+  onSaved: (reward: RewardSaved) => void;
 };
 
 function FormSection({ title, children }: { title: string; children: ReactNode }) {
@@ -84,11 +92,23 @@ export function RewardFormDialog({ open, onOpenChange, initial, onSaved }: Props
   const submit = () => {
     startTransition(async () => {
       try {
-        if (form.id) await updateReward(form);
-        else await createReward(form);
+        let saved: RewardSaved;
+        if (form.id) {
+          await updateReward(form);
+          saved = {
+            id: form.id,
+            title: form.title.trim(),
+            description: form.description.trim() || null,
+            xpCost: form.xpCost,
+            emoji: form.emoji,
+          };
+        } else {
+          saved = (await createReward(form)).reward;
+        }
+
         toast.success(t("rewardSaved"));
         onOpenChange(false);
-        onSaved();
+        onSaved(saved);
       } catch {
         toast.error(tc("error"));
       }

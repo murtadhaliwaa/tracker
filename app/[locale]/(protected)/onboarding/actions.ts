@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateLocalePaths } from "@/lib/revalidate-paths";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireViewer } from "@/lib/action-utils";
@@ -12,12 +12,7 @@ const nameSchema = z.object({
 });
 
 function revalidateAll() {
-  revalidatePath("/en/dashboard");
-  revalidatePath("/ar/dashboard");
-  revalidatePath("/en/habits");
-  revalidatePath("/ar/habits");
-  revalidatePath("/en/profile");
-  revalidatePath("/ar/profile");
+  revalidateLocalePaths("/dashboard", "/habits", "/profile");
 }
 
 export async function saveOnboardingName(input: unknown) {

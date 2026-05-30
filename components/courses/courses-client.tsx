@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { patchShellFromAward } from "@/lib/shell-stats-client";
 import { toast } from "sonner";
 import { Check, Plus } from "lucide-react";
 import { RPGCard } from "@/components/ui/rpg-card";
@@ -66,7 +66,6 @@ export function CoursesClient({ courses: initialCourses }: Props) {
   const t = useTranslations("courses");
   const tc = useTranslations("common");
   const categoryLabels = useMemo(() => getCourseCategoryLabels(t), [t]);
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [courses, setCourses] = useState(initialCourses);
   const [formOpen, setFormOpen] = useState(false);
@@ -97,7 +96,6 @@ export function CoursesClient({ courses: initialCourses }: Props) {
         setCourses((prev) => [data.course, ...prev]);
         toast.success(t("created"));
         setFormOpen(false);
-        router.refresh();
       } catch {
         toast.error(tc("error"));
       }
@@ -105,6 +103,7 @@ export function CoursesClient({ courses: initialCourses }: Props) {
   };
 
   const handleLessonToggle = (courseId: string, lessonId: string) => {
+    const snapshot = courses;
     setCourses((prev) =>
       prev.map((c) => {
         if (c.id !== courseId) return c;
@@ -132,9 +131,11 @@ export function CoursesClient({ courses: initialCourses }: Props) {
         if (result.isComplete) {
           const courseTitle = courses.find((c) => c.id === courseId)?.title ?? "";
           setCelebrate({ title: courseTitle, xp: result.bonusXpAwarded });
+          patchShellFromAward(result);
           if (result.leveledUp) setLevelUp({ level: result.newLevel, title: result.newTitle });
         } else {
           toast.success(tc("xpAwarded", { xp: result.xpAwarded }));
+          patchShellFromAward(result);
         }
 
         window.dispatchEvent(
@@ -142,10 +143,9 @@ export function CoursesClient({ courses: initialCourses }: Props) {
             detail: result.boss,
           }),
         );
-        router.refresh();
       } catch {
         toast.error(tc("error"));
-        router.refresh();
+        setCourses(snapshot);
       }
     });
   };

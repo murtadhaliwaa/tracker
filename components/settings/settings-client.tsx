@@ -26,6 +26,7 @@ import {
   updateNotificationTime,
   updatePreferredLanguage,
 } from "@/app/[locale]/(protected)/settings/actions";
+import { patchShellFromAward } from "@/lib/shell-stats-client";
 import { formatTimeAmPm } from "@/lib/format-time";
 import { emptyRewardForm, type RewardFormValues } from "@/lib/reward-display";
 import { RewardFormDialog } from "@/components/settings/reward-form-dialog";
@@ -56,12 +57,15 @@ type Props = {
 
 type RewardForm = RewardFormValues;
 
-export function SettingsClient({ preferredLanguage, totalXP, notifications, rewards }: Props) {
+export function SettingsClient({ preferredLanguage, totalXP: initialTotalXP, notifications: initialNotifications, rewards: initialRewards }: Props) {
   const t = useTranslations("settings");
   const tc = useTranslations("common");
   const router = useRouter();
   const pathname = usePathname();
   const [pending, startTransition] = useTransition();
+  const [totalXP, setTotalXP] = useState(initialTotalXP);
+  const [notifications, setNotifications] = useState(initialNotifications);
+  const [rewards, setRewards] = useState(initialRewards);
   const [rewardOpen, setRewardOpen] = useState(false);
   const [rewardInitial, setRewardInitial] = useState<RewardForm | null>(null);
   const [timeEdit, setTimeEdit] = useState<{ id: string; time: string } | null>(null);
@@ -72,7 +76,6 @@ export function SettingsClient({ preferredLanguage, totalXP, notifications, rewa
       await updatePreferredLanguage({ language: next });
       const nextPath = pathname.replace(/^\/(en|ar)/, `/${next}`);
       router.push(nextPath);
-      router.refresh();
     });
   };
 
@@ -103,13 +106,40 @@ export function SettingsClient({ preferredLanguage, totalXP, notifications, rewa
     startTransition(async () => {
       try {
         const res = await fetch(`/api/rewards/${rewardId}/redeem`, { method: "POST" });
-        const data = (await res.json()) as { error?: string; insufficientXp?: boolean };
+        const data = (await res.json()) as {
+          error?: string;
+          insufficientXp?: boolean;
+          success?: boolean;
+          newLevel?: number;
+          newTitle?: string;
+          currentXP?: number;
+          xpToNextLevel?: number;
+          xpCost?: number;
+        };
         if (!res.ok) {
           toast.error(data.insufficientXp ? t("insufficientXp") : tc("error"));
           return;
         }
         toast.success(t("rewardRedeemed"));
-        router.refresh();
+        setRewards((prev) =>
+          prev.map((r) =>
+            r.id === rewardId ? { ...r, claimedAt: new Date().toISOString() } : r,
+          ),
+        );
+        if (data.xpCost) setTotalXP((xp) => Math.max(0, xp - data.xpCost!));
+        if (
+          data.newLevel !== undefined &&
+          data.newTitle !== undefined &&
+          data.currentXP !== undefined &&
+          data.xpToNextLevel !== undefined
+        ) {
+          patchShellFromAward({
+            newLevel: data.newLevel,
+            newTitle: data.newTitle,
+            currentXP: data.currentXP,
+            xpToNextLevel: data.xpToNextLevel,
+          });
+        }
       } catch {
         toast.error(tc("error"));
       }
@@ -158,8 +188,12 @@ export function SettingsClient({ preferredLanguage, totalXP, notifications, rewa
                     startTransition(async () => {
                       if (checked) await enableNotification({ id: n.id, enabled: true });
                       else await disableNotification({ id: n.id, enabled: false });
+                      setNotifications((prev) =>
+                        prev.map((item) =>
+                          item.id === n.id ? { ...item, isEnabled: checked } : item,
+                        ),
+                      );
                       toast.success(t("notificationUpdated"));
-                      router.refresh();
                     })
                   }
                 />
@@ -232,8 +266,8 @@ export function SettingsClient({ preferredLanguage, totalXP, notifications, rewa
                       onClick={() =>
                         startTransition(async () => {
                           await deleteReward(r.id);
+                          setRewards((prev) => prev.filter((item) => item.id !== r.id));
                           toast.success(t("rewardDeleted"));
-                          router.refresh();
                         })
                       }
                     >
@@ -340,7 +374,17 @@ export function SettingsClient({ preferredLanguage, totalXP, notifications, rewa
         open={rewardOpen}
         onOpenChange={setRewardOpen}
         initial={rewardInitial}
-        onSaved={() => router.refresh()}
+        onSaved={(saved) => {
+          if (saved) {
+            setRewards((prev) => {
+              const existing = prev.find((r) => r.id === saved.id);
+              if (existing) {
+                return prev.map((r) => (r.id === saved.id ? { ...r, ...saved } : r));
+              }
+              return [{ ...saved, claimedAt: null }, ...prev];
+            });
+          }
+        }}
       />
 
       <Dialog open={Boolean(timeEdit)} onOpenChange={() => setTimeEdit(null)}>
@@ -354,9 +398,11 @@ export function SettingsClient({ preferredLanguage, totalXP, notifications, rewa
                 startTransition(async () => {
                   if (!timeEdit) return;
                   await updateNotificationTime(timeEdit);
+                  setNotifications((prev) =>
+                    prev.map((n) => (n.id === timeEdit.id ? { ...n, time: timeEdit.time } : n)),
+                  );
                   toast.success(t("notificationUpdated"));
                   setTimeEdit(null);
-                  router.refresh();
                 })
               }
             >

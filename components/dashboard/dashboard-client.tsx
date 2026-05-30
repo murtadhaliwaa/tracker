@@ -2,8 +2,8 @@
 
 import { useState, useTransition, useEffect } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { patchShellFromAward, dispatchShellStats } from "@/lib/shell-stats-client";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Flame, Check, Quote, Skull, Sparkles, Loader2 } from "lucide-react";
@@ -33,14 +33,17 @@ import {
 } from "@/components/ui/alert-dialog";
 import { LevelUpModal } from "@/components/shared/level-up-modal";
 import { PerfectDayCelebrationBanner } from "@/components/shared/perfect-day-celebration-banner";
-import AnimatedContent from "@/components/AnimatedContent";
 import BorderGlow from "@/components/BorderGlow";
 import { RPG_BORDER_GLOW } from "@/components/react-bits/rpg-theme";
-import { DashboardMagicBento } from "@/components/dashboard/dashboard-magic-bento";
 import { habitIconDisplay, habitAccentColor } from "@/lib/habit-display";
 import { logHabit } from "@/app/[locale]/(protected)/habits/actions";
 import { getMissedHabitsYesterday, useStreakFreeze as activateStreakFreeze } from "@/app/[locale]/(protected)/dashboard/actions";
 
+const AnimatedContent = dynamic(() => import("@/components/AnimatedContent"), { ssr: false });
+const DashboardMagicBento = dynamic(
+  () => import("@/components/dashboard/dashboard-magic-bento").then((m) => m.DashboardMagicBento),
+  { ssr: false },
+);
 const OnboardingModal = dynamic(
   () =>
     import("@/components/onboarding/onboarding-modal").then((mod) => mod.OnboardingModal),
@@ -84,7 +87,6 @@ type Props = {
 export function DashboardClient(props: Props) {
   const t = useTranslations("dashboard");
   const tc = useTranslations("common");
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [boss, setBoss] = useState(props.boss);
   const [freezeOpen, setFreezeOpen] = useState(false);
@@ -118,23 +120,7 @@ export function DashboardClient(props: Props) {
       if (detail) setBoss((prev) => ({ ...prev, ...detail }));
     };
     window.addEventListener("boss-updated", onBossUpdated);
-
-    const pollBoss = async () => {
-      try {
-        const data = await fetch("/api/boss").then((r) => r.json());
-        if (data.boss) setBoss((prev) => ({ ...prev, ...data.boss }));
-      } catch {
-        /* ignore poll errors */
-      }
-    };
-
-    pollBoss();
-    const interval = setInterval(pollBoss, 8000);
-
-    return () => {
-      window.removeEventListener("boss-updated", onBossUpdated);
-      clearInterval(interval);
-    };
+    return () => window.removeEventListener("boss-updated", onBossUpdated);
   }, []);
 
   useEffect(() => {
@@ -192,6 +178,14 @@ export function DashboardClient(props: Props) {
         });
         setCompletedIds((prev) => [...prev, habit.id]);
         toast.success(tc("xpAwarded", { xp: result.xpAwarded }));
+        patchShellFromAward(result);
+        if (result.boss) {
+          setBoss((prev) => ({
+            ...prev,
+            currentValue: result.boss.currentValue,
+            isCompleted: result.boss.isCompleted,
+          }));
+        }
         if (result.leveledUp) setLevelUp({ level: result.newLevel, title: result.newTitle });
         if (result.perfectDay.isPerfectDay) {
           setShowPerfectDayCelebration(true);
@@ -199,7 +193,6 @@ export function DashboardClient(props: Props) {
           localStorage.removeItem(perfectDayDismissKey);
         }
         if (recoveryQuest) toast.success(t("recoverySuccess"));
-        router.refresh();
       } catch {
         toast.error(tc("error"));
       }
@@ -433,10 +426,10 @@ export function DashboardClient(props: Props) {
               disabled={pending}
               onClick={() => {
                 startTransition(async () => {
-                  await activateStreakFreeze();
+                  const result = await activateStreakFreeze();
                   toast.success(t("freezeSuccess"));
                   setFreezeOpen(false);
-                  router.refresh();
+                  dispatchShellStats({ freezesAvailable: result.remaining });
                 });
               }}
             >

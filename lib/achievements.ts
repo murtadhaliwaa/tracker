@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import {
   ACHIEVEMENT_DEFINITIONS,
   buildAchievementContext,
+  getAchievementContext,
   type AchievementContext,
 } from "@/lib/achievement-engine";
 
@@ -85,7 +86,7 @@ export async function getAchievementsForUser(userId: string): Promise<Achievemen
       where: { userId },
       orderBy: { createdAt: "asc" },
     }),
-    buildAchievementContext(userId),
+    getAchievementContext(userId),
   ]);
 
   const dbByType = new Map(dbAchievements.filter((a) => a.type).map((a) => [a.type!, a]));

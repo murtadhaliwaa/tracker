@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateLocalePaths } from "@/lib/revalidate-paths";
 import { subDays, startOfDay } from "date-fns";
 import { prisma } from "@/lib/prisma";
 import { requireViewer } from "@/lib/action-utils";
@@ -12,8 +12,7 @@ export async function useStreakFreeze() {
 
   const streak = await applyStreakFreeze(viewer.userId);
 
-  revalidatePath("/en/dashboard");
-  revalidatePath("/ar/dashboard");
+  revalidateLocalePaths("/dashboard");
   return { success: true as const, remaining: streak.freezesAvailable };
 }
 

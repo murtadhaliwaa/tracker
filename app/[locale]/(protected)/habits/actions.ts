@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireViewer } from "@/lib/action-utils";
 import {
@@ -9,11 +8,12 @@ import {
   deleteHabitForUser,
   updateHabitForUser,
 } from "@/lib/services/habits";
+import { revalidateLocalePaths } from "@/lib/revalidate-paths";
+import { syncWeeklyBossProgress } from "@/lib/weekly-boss";
 import { habitOrderSchema } from "@/lib/validators";
 
-async function revalidateHabitPages(locale = "en") {
-  revalidatePath(`/${locale}/habits`);
-  revalidatePath(`/${locale}/dashboard`);
+function revalidateHabitPages(includeDashboard = false) {
+  revalidateLocalePaths("/habits", ...(includeDashboard ? ["/dashboard"] as const : []));
 }
 
 export async function createHabit(input: unknown) {
@@ -77,8 +77,11 @@ export async function updateHabitOrder(input: unknown) {
 export async function logHabit(input: unknown) {
   const viewer = await requireViewer();
   const result = await completeHabitForUser(viewer.userId, input);
-  await revalidateHabitPages();
-  return result;
+  const [, bossResult] = await Promise.all([
+    revalidateHabitPages(true),
+    syncWeeklyBossProgress(viewer.userId),
+  ]);
+  return { ...result, boss: bossResult.boss };
 }
 
 export async function getCategories() {

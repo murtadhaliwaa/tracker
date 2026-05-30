@@ -166,7 +166,7 @@ type Props = {
   avatarStyle: string | null;
   level: number;
   characterTitle: string;
-  onSaved: () => void;
+  onSaved: (saved: { name: string; avatarStyle: string }) => void;
 };
 
 export function ProfileEditDialog({
@@ -211,7 +211,7 @@ export function ProfileEditDialog({
         });
         toast.success(t("profileSaved"));
         onOpenChange(false);
-        onSaved();
+        onSaved({ name: formName.trim(), avatarStyle: previewAvatarStyle });
       } catch {
         toast.error(tc("error"));
       }

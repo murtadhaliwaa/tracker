@@ -1,22 +1,17 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireViewer } from "@/lib/action-utils";
 import { awardXP } from "@/lib/xp";
 import { checkAndUnlockAchievements } from "@/lib/achievement-engine";
+import { revalidateLocalePaths } from "@/lib/revalidate-paths";
 import { meditationSessionSchema, readingSessionSchema } from "@/lib/validators";
 
 const MEDITATION_XP = 15;
 const READING_XP = 10;
 
 function revalidateMind() {
-  revalidatePath("/en/mind");
-  revalidatePath("/ar/mind");
-  revalidatePath("/en/dashboard");
-  revalidatePath("/ar/dashboard");
-  revalidatePath("/en", "layout");
-  revalidatePath("/ar", "layout");
+  revalidateLocalePaths("/mind");
 }
 
 export async function createMeditationSession(input: unknown) {
@@ -35,10 +30,10 @@ export async function createMeditationSession(input: unknown) {
     });
 
     const xpResult = await awardXP(tx, viewer.userId, MEDITATION_XP, "meditation", 1);
-    const unlockedAchievements = await checkAndUnlockAchievements(viewer.userId, tx);
-    return { session, ...xpResult, unlockedAchievements };
+    return { session, ...xpResult };
   });
 
+  void checkAndUnlockAchievements(viewer.userId).catch(() => undefined);
   revalidateMind();
   return result;
 }
@@ -69,10 +64,10 @@ export async function createReadingSession(input: unknown) {
     });
 
     const xpResult = await awardXP(tx, viewer.userId, READING_XP, "reading", 1);
-    const unlockedAchievements = await checkAndUnlockAchievements(viewer.userId, tx);
-    return { session, ...xpResult, unlockedAchievements };
+    return { session, ...xpResult };
   });
 
+  void checkAndUnlockAchievements(viewer.userId).catch(() => undefined);
   revalidateMind();
   return result;
 }

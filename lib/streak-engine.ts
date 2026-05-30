@@ -100,13 +100,13 @@ export async function processMissedStreakDays(userId: string) {
     where: { userId, habitId: null },
   });
 
-  if (!streak) return;
+  if (!streak) return null;
 
   if (
     streak.lastMissedCheckAt &&
     startOfDay(streak.lastMissedCheckAt).getTime() === today.getTime()
   ) {
-    return;
+    return streak;
   }
 
   const completedYesterday =
@@ -119,7 +119,7 @@ export async function processMissedStreakDays(userId: string) {
       where: { id: streak.id },
       data: { lastMissedCheckAt: today },
     });
-    return;
+    return streak;
   }
 
   if (streak.lastCompletedDate && startOfDay(streak.lastCompletedDate) >= yesterday) {
@@ -127,7 +127,7 @@ export async function processMissedStreakDays(userId: string) {
       where: { id: streak.id },
       data: { lastMissedCheckAt: today },
     });
-    return;
+    return streak;
   }
 
   const freezeCoversYesterday =
@@ -139,7 +139,7 @@ export async function processMissedStreakDays(userId: string) {
       where: { id: streak.id },
       data: { lastCompletedDate: yesterday, lastMissedCheckAt: today },
     });
-    return;
+    return prisma.streak.findFirst({ where: { id: streak.id } });
   }
 
   if ((streak.currentStreak ?? 0) === 0) {
@@ -147,7 +147,7 @@ export async function processMissedStreakDays(userId: string) {
       where: { id: streak.id },
       data: { lastMissedCheckAt: today },
     });
-    return;
+    return streak;
   }
 
   const health = await prisma.healthBar.findUnique({ where: { userId } });
@@ -170,6 +170,8 @@ export async function processMissedStreakDays(userId: string) {
       });
     }
   });
+
+  return prisma.streak.findFirst({ where: { id: streak.id } });
 }
 
 export async function applyStreakFreeze(userId: string) {

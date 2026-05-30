@@ -1,4 +1,5 @@
 import { startOfWeek, subWeeks } from "date-fns";
+import { cache } from "react";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
@@ -309,9 +310,12 @@ export async function buildAchievementContext(userId: string, tx?: Tx): Promise<
   };
 }
 
+/** Per-request cache — avoids duplicate heavy aggregates on the achievements page. */
+export const getAchievementContext = cache((userId: string) => buildAchievementContext(userId));
+
 export async function checkAndUnlockAchievements(userId: string, tx?: Tx) {
   const client = tx ?? prisma;
-  const ctx = await buildAchievementContext(userId, tx);
+  const ctx = tx ? await buildAchievementContext(userId, tx) : await getAchievementContext(userId);
   const existing = await client.achievement.findMany({ where: { userId } });
   const existingTypes = new Set(existing.map((a) => a.type).filter(Boolean));
 

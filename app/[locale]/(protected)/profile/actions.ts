@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidateLocalePaths } from "@/lib/revalidate-paths";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireViewer } from "@/lib/action-utils";
@@ -14,10 +14,7 @@ const profileSchema = z.object({
 });
 
 function revalidateProfilePaths() {
-  revalidatePath("/en/profile");
-  revalidatePath("/ar/profile");
-  revalidatePath("/en/dashboard");
-  revalidatePath("/ar/dashboard");
+  revalidateLocalePaths("/profile", "/dashboard");
 }
 
 export async function updateProfile(input: unknown) {

@@ -13,10 +13,9 @@ export async function AppShellLoader({
   locale: string;
   children: React.ReactNode;
 }) {
-  const [, profile, overallStreak] = await Promise.all([
-    processMissedStreakDays(userId),
+  const [profile, overallStreak] = await Promise.all([
     prisma.userProfile.findUnique({ where: { userId } }),
-    prisma.streak.findFirst({ where: { userId, habitId: null } }),
+    processMissedStreakDays(userId),
   ]);
 
   if (profile?.preferredLanguage && profile.preferredLanguage !== locale) {
@@ -25,7 +24,6 @@ export async function AppShellLoader({
 
   return (
     <AppShell
-      key={`${profile?.name ?? "player"}-${profile?.currentXP ?? 0}-${profile?.xpToNextLevel ?? 500}-${profile?.level ?? 1}-${profile?.avatarStyle ?? "default"}-${overallStreak?.currentStreak ?? 0}-${overallStreak?.freezesAvailable ?? 0}`}
       playerName={profile?.name ?? null}
       playerLevel={profile?.level ?? 1}
       playerTitle={getTitleFromLevel(profile?.level ?? 1)}

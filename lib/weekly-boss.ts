@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { endOfWeek, getISOWeek, startOfDay, startOfWeek, subDays } from "date-fns";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -40,6 +41,16 @@ export const WEEKLY_BOSSES = [
 
 const BOSS_XP_REWARD = 200;
 
+type HabitRow = { id: string; title: string; period: string };
+
+type BossProgressContext = {
+  habits: HabitRow[];
+  weekLogsByHabitDay: Set<string>;
+  perfectDayStreak: number;
+  courseLessons: number;
+  maxHabitStreak: number;
+};
+
 function getBossTemplate(weekNumber: number) {
   return WEEKLY_BOSSES[weekNumber % WEEKLY_BOSSES.length]!;
 }
@@ -54,104 +65,161 @@ function habitMatches(title: string, patterns: RegExp[]) {
   return patterns.some((p) => p.test(title));
 }
 
-async function countDistinctLogDays(
-  userId: string,
-  weekStart: Date,
-  weekEnd: Date,
-  titlePatterns: RegExp[],
-  client: Tx | typeof prisma = prisma,
-) {
-  const habits = await client.habit.findMany({
-    where: { userId, isArchived: false },
-    select: { id: true, title: true },
-  });
-  const habitIds = habits
-    .filter((h) => habitMatches(h.title, titlePatterns))
-    .map((h) => h.id);
-  if (habitIds.length === 0) return 0;
-
-  const days = await client.habitLog.groupBy({
-    by: ["date"],
-    where: {
-      userId,
-      completed: true,
-      habitId: { in: habitIds },
-      date: { gte: weekStart, lte: weekEnd },
-    },
-  });
-
-  return days.length;
-}
-
-async function countPerfectDayStreak(userId: string, client: Tx | typeof prisma = prisma) {
-  const dailyHabits = await client.habit.findMany({
-    where: { userId, period: "DAILY", isArchived: false },
-    select: { id: true },
-  });
-  const requiredCount = dailyHabits.length;
-  if (requiredCount === 0) return 0;
-
-  const habitIds = dailyHabits.map((h) => h.id);
-  const rangeStart = startOfDay(subDays(new Date(), 13));
-
-  const dayCounts = await client.habitLog.groupBy({
-    by: ["date"],
-    where: {
-      userId,
-      completed: true,
-      habitId: { in: habitIds },
-      date: { gte: rangeStart },
-    },
-    _count: { habitId: true },
-  });
-
-  const perfectDays = new Set(
-    dayCounts
-      .filter((entry) => entry._count.habitId >= requiredCount)
-      .map((entry) => startOfDay(entry.date).getTime()),
-  );
-
-  let streak = 0;
-  for (let offset = 0; offset < 14; offset++) {
-    const day = startOfDay(subDays(new Date(), offset)).getTime();
-    if (perfectDays.has(day)) {
-      streak++;
-    } else {
-      break;
-    }
-  }
-  return streak;
-}
-
 async function countCourseLessonsThisWeek(
   userId: string,
   weekStart: Date,
   weekEnd: Date,
   client: Tx | typeof prisma = prisma,
 ) {
-  const transactions = await client.xPTransaction.count({
-    where: {
-      userId,
-      reason: "course_completion",
-      createdAt: { gte: weekStart, lte: weekEnd },
-    },
-  });
-
-  const courses = await client.course.findMany({
-    where: { userId, updatedAt: { gte: weekStart, lte: weekEnd } },
-    select: { completedLessons: true },
-  });
+  const [transactions, courses] = await Promise.all([
+    client.xPTransaction.count({
+      where: {
+        userId,
+        reason: "course_completion",
+        createdAt: { gte: weekStart, lte: weekEnd },
+      },
+    }),
+    client.course.findMany({
+      where: { userId, updatedAt: { gte: weekStart, lte: weekEnd } },
+      select: { completedLessons: true },
+    }),
+  ]);
 
   return Math.max(transactions, courses.reduce((sum, c) => sum + c.completedLessons, 0));
 }
 
-async function maxHabitStreak(userId: string, client: Tx | typeof prisma = prisma) {
-  const streaks = await client.streak.findMany({
-    where: { userId, habitId: { not: null } },
-    select: { currentStreak: true, longestStreak: true },
+async function loadBossProgressContext(
+  userId: string,
+  client: Tx | typeof prisma = prisma,
+): Promise<BossProgressContext> {
+  const { weekStart, weekEnd } = getWeekBounds();
+  const rangeStart = startOfDay(subDays(new Date(), 13));
+
+  const habits = await client.habit.findMany({
+    where: { userId, isArchived: false },
+    select: { id: true, title: true, period: true },
   });
-  if (streaks.length === 0) return 0;
-  return Math.max(...streaks.map((s) => Math.max(s.currentStreak, s.longestStreak)));
+
+  const habitIds = habits.map((h) => h.id);
+  const dailyHabitIds = habits.filter((h) => h.period === "DAILY").map((h) => h.id);
+
+  if (habitIds.length === 0) {
+    return {
+      habits,
+      weekLogsByHabitDay: new Set(),
+      perfectDayStreak: 0,
+      courseLessons: await countCourseLessonsThisWeek(userId, weekStart, weekEnd, client),
+      maxHabitStreak: 0,
+    };
+  }
+
+  const [weekLogs, recentDayCounts, courseLessons, streakRows] = await Promise.all([
+    client.habitLog.findMany({
+      where: {
+        userId,
+        completed: true,
+        habitId: { in: habitIds },
+        date: { gte: weekStart, lte: weekEnd },
+      },
+      select: { habitId: true, date: true },
+    }),
+    dailyHabitIds.length > 0
+      ? client.habitLog.groupBy({
+          by: ["date"],
+          where: {
+            userId,
+            completed: true,
+            habitId: { in: dailyHabitIds },
+            date: { gte: rangeStart },
+          },
+          _count: { habitId: true },
+        })
+      : Promise.resolve([]),
+    countCourseLessonsThisWeek(userId, weekStart, weekEnd, client),
+    client.streak.findMany({
+      where: { userId, habitId: { not: null } },
+      select: { currentStreak: true, longestStreak: true },
+    }),
+  ]);
+
+  const weekLogsByHabitDay = new Set(
+    weekLogs.map((log) => `${log.habitId}:${startOfDay(log.date).getTime()}`),
+  );
+
+  const requiredCount = dailyHabitIds.length;
+  const perfectDays = new Set(
+    recentDayCounts
+      .filter((entry) => entry._count.habitId >= requiredCount)
+      .map((entry) => startOfDay(entry.date).getTime()),
+  );
+
+  let perfectDayStreak = 0;
+  for (let offset = 0; offset < 14; offset++) {
+    const day = startOfDay(subDays(new Date(), offset)).getTime();
+    if (perfectDays.has(day)) perfectDayStreak++;
+    else break;
+  }
+
+  const maxHabitStreak =
+    streakRows.length === 0
+      ? 0
+      : Math.max(...streakRows.map((s) => Math.max(s.currentStreak, s.longestStreak)));
+
+  return {
+    habits,
+    weekLogsByHabitDay,
+    perfectDayStreak,
+    courseLessons,
+    maxHabitStreak,
+  };
+}
+
+function countDistinctDaysForPatterns(ctx: BossProgressContext, patterns: RegExp[]) {
+  const ids = new Set(
+    ctx.habits.filter((h) => habitMatches(h.title, patterns)).map((h) => h.id),
+  );
+  if (ids.size === 0) return 0;
+
+  const days = new Set<number>();
+  for (const key of ctx.weekLogsByHabitDay) {
+    const [habitId, dayMs] = key.split(":");
+    if (ids.has(habitId!)) days.add(Number(dayMs));
+  }
+  return days.size;
+}
+
+function calculateProgressFromContext(ctx: BossProgressContext, weekNumber: number) {
+  const template = getBossTemplate(weekNumber);
+
+  switch (template.key) {
+    case "calm_scholar": {
+      const medDays = countDistinctDaysForPatterns(ctx, [/meditat/i, /mindful/i, /lotus/i]);
+      const readDays = countDistinctDaysForPatterns(ctx, [/read/i, /book/i]);
+      return Math.min(
+        template.targetValue,
+        Math.min(medDays, 3) + Math.min(readDays, 3) + Math.min(2, Math.min(medDays, readDays)),
+      );
+    }
+    case "iron_will":
+      return Math.min(template.targetValue, ctx.perfectDayStreak);
+    case "knowledge_seeker":
+      return Math.min(template.targetValue, ctx.courseLessons);
+    case "mind_body": {
+      const exerciseDays = countDistinctDaysForPatterns(ctx, [
+        /exercise/i,
+        /workout/i,
+        /gym/i,
+        /train/i,
+        /dumbbell/i,
+      ]);
+      const medDays = countDistinctDaysForPatterns(ctx, [/meditat/i, /mindful/i, /lotus/i]);
+      return Math.min(template.targetValue, Math.min(exerciseDays, 3) + Math.min(medDays, 3));
+    }
+    case "consistency_king":
+      return Math.min(template.targetValue, ctx.maxHabitStreak);
+    default:
+      return 0;
+  }
 }
 
 export async function calculateBossProgress(
@@ -159,59 +227,8 @@ export async function calculateBossProgress(
   weekNumber: number,
   client: Tx | typeof prisma = prisma,
 ) {
-  const template = getBossTemplate(weekNumber);
-  const { weekStart, weekEnd } = getWeekBounds();
-
-  switch (template.key) {
-    case "calm_scholar": {
-      const medDays = await countDistinctLogDays(
-        userId,
-        weekStart,
-        weekEnd,
-        [/meditat/i, /mindful/i, /lotus/i],
-        client,
-      );
-      const readDays = await countDistinctLogDays(
-        userId,
-        weekStart,
-        weekEnd,
-        [/read/i, /book/i],
-        client,
-      );
-      return Math.min(
-        template.targetValue,
-        Math.min(medDays, 3) + Math.min(readDays, 3) + Math.min(2, Math.min(medDays, readDays)),
-      );
-    }
-    case "iron_will":
-      return Math.min(template.targetValue, await countPerfectDayStreak(userId, client));
-    case "knowledge_seeker":
-      return Math.min(
-        template.targetValue,
-        await countCourseLessonsThisWeek(userId, weekStart, weekEnd, client),
-      );
-    case "mind_body": {
-      const exerciseDays = await countDistinctLogDays(
-        userId,
-        weekStart,
-        weekEnd,
-        [/exercise/i, /workout/i, /gym/i, /train/i, /dumbbell/i],
-        client,
-      );
-      const medDays = await countDistinctLogDays(
-        userId,
-        weekStart,
-        weekEnd,
-        [/meditat/i, /mindful/i, /lotus/i],
-        client,
-      );
-      return Math.min(template.targetValue, Math.min(exerciseDays, 3) + Math.min(medDays, 3));
-    }
-    case "consistency_king":
-      return Math.min(template.targetValue, await maxHabitStreak(userId, client));
-    default:
-      return 0;
-  }
+  const ctx = await loadBossProgressContext(userId, client);
+  return calculateProgressFromContext(ctx, weekNumber);
 }
 
 export async function ensureWeeklyBoss(userId: string, client: Tx | typeof prisma = prisma) {
@@ -233,6 +250,11 @@ export async function ensureWeeklyBoss(userId: string, client: Tx | typeof prism
     },
   });
 }
+
+/** Fast read path: returns cached boss row without recalculating progress. */
+export const getWeeklyBossForDisplay = cache(async (userId: string) => {
+  return ensureWeeklyBoss(userId);
+});
 
 export async function refreshWeeklyBoss(userId: string, client: Tx | typeof prisma = prisma) {
   const weekNumber = getISOWeek(new Date());
@@ -278,4 +300,15 @@ export async function syncWeeklyBossProgress(userId: string, tx?: Tx): Promise<B
 
   if (tx) return run(tx);
   return prisma.$transaction(run);
+}
+
+export function toBossPayload(boss: Awaited<ReturnType<typeof ensureWeeklyBoss>>) {
+  return {
+    title: boss.title,
+    description: boss.description,
+    currentValue: boss.currentValue,
+    targetValue: boss.targetValue,
+    xpReward: boss.xpReward,
+    isCompleted: boss.isCompleted,
+  };
 }

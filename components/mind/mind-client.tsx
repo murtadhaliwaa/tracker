@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState, useTransition, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { patchShellFromAward } from "@/lib/shell-stats-client";
 import { toast } from "sonner";
 import { BookOpen, Brain, Trash2 } from "lucide-react";
 import { RPGCard } from "@/components/ui/rpg-card";
@@ -54,7 +54,6 @@ type Props = {
 export function MindClient(props: Props) {
   const t = useTranslations("mind");
   const tc = useTranslations("common");
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [medOpen, setMedOpen] = useState(false);
   const [readOpen, setReadOpen] = useState(false);
@@ -146,9 +145,9 @@ export function MindClient(props: Props) {
         );
 
         toast.success(t("sessionLogged"));
+        patchShellFromAward(result);
         if (result.leveledUp) setLevelUp({ level: result.newLevel, title: result.newTitle });
         setMedOpen(false);
-        router.refresh();
       } catch {
         toast.error(tc("error"));
       }
@@ -197,9 +196,9 @@ export function MindClient(props: Props) {
         ]);
 
         toast.success(t("readingLogged"));
+        patchShellFromAward(result);
         if (result.leveledUp) setLevelUp({ level: result.newLevel, title: result.newTitle });
         setReadOpen(false);
-        router.refresh();
       } catch {
         toast.error(tc("error"));
       }
@@ -278,7 +277,6 @@ export function MindClient(props: Props) {
                       setMeditationCount((c) => Math.max(0, c - 1));
                       setTotalMinutes((m) => Math.max(0, m - s.duration));
                       toast.success(t("deleted"));
-                      router.refresh();
                     })
                   }
                 >

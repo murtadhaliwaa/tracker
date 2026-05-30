@@ -215,11 +215,10 @@ export async function completeHabitForUser(userId: string, input: unknown) {
     }
 
     const perfectDay = await checkPerfectDay(tx, userId);
-    const unlockedAchievements = await checkAndUnlockAchievements(userId, tx);
-
-    return { log, ...xpResult, perfectDay, unlockedAchievements };
+    return { log, ...xpResult, perfectDay, unlockedAchievements: [] as string[] };
   });
 
+  void checkAndUnlockAchievements(userId).catch(() => undefined);
   return result;
 }
 
