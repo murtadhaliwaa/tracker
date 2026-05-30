@@ -5,19 +5,11 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireViewer } from "@/lib/action-utils";
 import { createHabitForUser } from "@/lib/services/habits";
+import { ONBOARDING_HABIT_PRESETS } from "@/lib/onboarding-presets";
 
 const nameSchema = z.object({
   name: z.string().trim().min(1).max(60),
 });
-
-export const ONBOARDING_HABIT_PRESETS = [
-  { key: "meditation", title: "Morning Meditation", icon: "Lotus", color: "#7c3aed" },
-  { key: "reading", title: "Daily Reading", icon: "Book", color: "#3b82f6" },
-  { key: "exercise", title: "Exercise", icon: "Dumbbell", color: "#ef4444" },
-  { key: "water", title: "Drink Water", icon: "💧", color: "#06b6d4" },
-  { key: "learn", title: "Learn Something New", icon: "📚", color: "#f59e0b" },
-  { key: "sleep", title: "Sleep by 11pm", icon: "🌙", color: "#6366f1" },
-] as const;
 
 function revalidateAll() {
   revalidatePath("/en/dashboard");

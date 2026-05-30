@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { format } from "date-fns";
@@ -36,10 +37,15 @@ import AnimatedContent from "@/components/AnimatedContent";
 import BorderGlow from "@/components/BorderGlow";
 import { RPG_BORDER_GLOW } from "@/components/react-bits/rpg-theme";
 import { DashboardMagicBento } from "@/components/dashboard/dashboard-magic-bento";
-import { OnboardingModal } from "@/components/onboarding/onboarding-modal";
 import { habitIconDisplay, habitAccentColor } from "@/lib/habit-display";
 import { logHabit } from "@/app/[locale]/(protected)/habits/actions";
 import { getMissedHabitsYesterday, useStreakFreeze as activateStreakFreeze } from "@/app/[locale]/(protected)/dashboard/actions";
+
+const OnboardingModal = dynamic(
+  () =>
+    import("@/components/onboarding/onboarding-modal").then((mod) => mod.OnboardingModal),
+  { ssr: false },
+);
 
 type DailyHabit = {
   id: string;
@@ -211,7 +217,7 @@ export function DashboardClient(props: Props) {
 
   return (
     <div className="space-y-10">
-      <OnboardingModal open={props.showOnboarding} />
+      {props.showOnboarding ? <OnboardingModal open /> : null}
 
       <LevelUpModal
         open={Boolean(levelUp)}

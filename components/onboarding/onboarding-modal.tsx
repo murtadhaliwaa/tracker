@@ -9,13 +9,14 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { habitIconDisplay } from "@/lib/habit-display";
 import { getOnboardingPresetLabel, type OnboardingPresetKey } from "@/lib/onboarding-display";
+import { ONBOARDING_HABIT_PRESETS } from "@/lib/onboarding-presets";
 import { XpProgressBar } from "@/components/gamification/player-card";
 import {
-  ONBOARDING_HABIT_PRESETS,
   addOnboardingHabits,
   completeOnboarding,
   saveOnboardingName,
@@ -51,6 +52,7 @@ export function OnboardingModal({ open }: Props) {
         showCloseButton={false}
         className="border-[#1e1e3a] bg-[#0f0f1a] sm:max-w-lg"
       >
+        <DialogTitle className="sr-only">{t("welcomeTitle")}</DialogTitle>
         {step === 1 ? (
           <div className="space-y-6 py-2 text-center">
             <h2 className="font-cinzel text-3xl font-bold text-[#f0c040]">{t("welcomeTitle")}</h2>

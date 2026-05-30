@@ -1,7 +1,7 @@
 import type { useTranslations } from "next-intl";
-import { ONBOARDING_HABIT_PRESETS } from "@/app/[locale]/(protected)/onboarding/actions";
+import type { OnboardingPresetKey } from "@/lib/onboarding-presets";
 
-export type OnboardingPresetKey = (typeof ONBOARDING_HABIT_PRESETS)[number]["key"];
+export type { OnboardingPresetKey };
 
 export function getOnboardingPresetLabel(
   t: ReturnType<typeof useTranslations<"onboarding">>,

@@ -1,4 +1,4 @@
-const CACHE = "life-rpg-shell-v6";
+const CACHE = "life-rpg-shell-v7";
 const ASSETS = [
   "/icons/favicon-32.png",
   "/icons/icon-192.png",
@@ -6,6 +6,12 @@ const ASSETS = [
   "/icons/apple-touch-icon.png",
   "/icons/icon-maskable-512.png",
 ];
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
