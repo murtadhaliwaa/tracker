@@ -47,7 +47,7 @@ const links = [
   "settings",
 ] as const;
 
-const mobileQuickLinks = ["dashboard", "habits", "stats", "mind", "settings"] as const;
+const mobileQuickLinks = ["dashboard", "habits", "todos", "mind", "settings"] as const;
 
 type LinkKey = (typeof links)[number];
 
