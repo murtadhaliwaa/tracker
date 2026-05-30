@@ -52,6 +52,7 @@ import { LevelUpModal } from "@/components/shared/level-up-modal";
 import { PerfectDayBanner } from "@/components/shared/perfect-day-banner";
 import { HabitFormDialog, type HabitFormValues } from "@/components/habits/habit-form-dialog";
 import { habitIconDisplay, habitAccentColor, type HabitFrequency } from "@/lib/habit-display";
+import type { HabitClientItem } from "@/lib/page-data/habits";
 import {
   archiveHabit,
   deleteHabit,
@@ -60,22 +61,7 @@ import {
   updateHabitOrder,
 } from "@/app/[locale]/(protected)/habits/actions";
 
-export type HabitClientItem = {
-  id: string;
-  title: string;
-  description: string | null;
-  period: "DAILY" | "WEEKLY" | "MONTHLY" | "YEARLY";
-  xpValue: number;
-  icon: string;
-  color: string;
-  logType: "CHECKBOX" | "FORM" | "TIMER";
-  isArchived: boolean;
-  order: number;
-  category: string | null;
-  frequency: HabitFrequency | null;
-  currentStreak: number;
-  completedToday: boolean;
-};
+export type { HabitClientItem } from "@/lib/page-data/habits";
 
 type Props = {
   habits: HabitClientItem[];
