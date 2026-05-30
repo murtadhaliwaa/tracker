@@ -211,7 +211,6 @@ export function AppShell({
             <Link
               key={key}
               href={href}
-              prefetch={false}
               onClick={onNavigate}
               className={navLinkClass(active)}
             >
@@ -298,10 +297,7 @@ export function AppShell({
           <div className="relative flex h-full flex-col overflow-y-auto p-5">{sidebarContent()}</div>
         </aside>
 
-        <main
-          key={pathname}
-          className="rpg-page-transition min-w-0 flex-1 overflow-x-hidden px-4 pb-24 pt-4 md:px-10 md:pb-8 md:pt-8"
-        >
+        <main className="rpg-page-transition min-w-0 flex-1 overflow-x-hidden px-4 pb-24 pt-4 md:px-10 md:pb-8 md:pt-8">
           {children}
         </main>
       </div>
@@ -322,7 +318,6 @@ export function AppShell({
               <Link
                 key={key}
                 href={href}
-                prefetch={false}
                 className={cn(
                   "flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 transition",
                   active ? "text-rpg-gold" : "text-[#888899]",

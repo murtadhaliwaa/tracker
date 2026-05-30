@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/gamification/app-shell";
-import { prisma } from "@/lib/prisma";
 import { getTitleFromLevel } from "@/lib/level-utils";
+import { getShellProfile } from "@/lib/page-data/shell-profile";
 import { processMissedStreakDays } from "@/lib/streak-engine";
 
 export async function AppShellLoader({
@@ -14,7 +14,7 @@ export async function AppShellLoader({
   children: React.ReactNode;
 }) {
   const [profile, overallStreak] = await Promise.all([
-    prisma.userProfile.findUnique({ where: { userId } }),
+    getShellProfile(userId),
     processMissedStreakDays(userId),
   ]);
 

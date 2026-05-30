@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { startOfDay, subDays } from "date-fns";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -92,7 +93,7 @@ export async function updateOverallStreakOnDailyCompletion(
   });
 }
 
-export async function processMissedStreakDays(userId: string) {
+async function resolveMissedStreakDays(userId: string) {
   const today = startOfDay(new Date());
   const yesterday = startOfDay(subDays(today, 1));
 
@@ -173,6 +174,9 @@ export async function processMissedStreakDays(userId: string) {
 
   return prisma.streak.findFirst({ where: { id: streak.id } });
 }
+
+/** Per-request cache — layout + pages share one streak check. */
+export const processMissedStreakDays = cache(resolveMissedStreakDays);
 
 export async function applyStreakFreeze(userId: string) {
   const streak = await prisma.streak.findFirst({
