@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import {
   ACHIEVEMENT_DEFINITIONS,
-  buildAchievementContext,
   getAchievementContext,
   type AchievementContext,
 } from "@/lib/achievement-engine";

@@ -118,7 +118,6 @@ export async function toggleLessonComplete(lessonId: string) {
     let leveledUp = lessonXpResult.leveledUp;
     let newLevel = lessonXpResult.newLevel;
     let newTitle = lessonXpResult.newTitle;
-    let unlockedAchievements: string[] = [];
 
     if (isComplete) {
       const bonusXpResult = await awardXP(tx, viewer.userId, COURSE_COMPLETE_BONUS, "course_completion", 1);
