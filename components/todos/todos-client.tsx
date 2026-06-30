@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { todoToFormValues, type TodoPriority } from "@/lib/todo-display";
 import { patchShellFromAward } from "@/lib/shell-stats-client";
-import { LevelUpModal } from "@/components/shared/level-up-modal";
+import { LazyLevelUpModal } from "@/components/shared/lazy-level-up-modal";
 import { TodoFormDialog } from "@/components/todos/todo-form-dialog";
 import {
   clearCompletedTodos,
@@ -161,7 +161,7 @@ export function TodosClient({ todos: initialTodos }: Props) {
 
   return (
     <div className="space-y-6">
-      <LevelUpModal
+      <LazyLevelUpModal
         open={Boolean(levelUp)}
         onOpenChange={() => setLevelUp(null)}
         level={levelUp?.level ?? 1}

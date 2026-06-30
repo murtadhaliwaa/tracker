@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { patchShellFromAward } from "@/lib/shell-stats-client";
 import {
@@ -48,9 +49,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { LevelUpModal } from "@/components/shared/level-up-modal";
+import { LazyLevelUpModal } from "@/components/shared/lazy-level-up-modal";
 import { PerfectDayBanner } from "@/components/shared/perfect-day-banner";
-import { HabitFormDialog, type HabitFormValues } from "@/components/habits/habit-form-dialog";
+import type { HabitFormValues } from "@/components/habits/habit-form-dialog";
 import { habitIconDisplay, habitAccentColor, type HabitFrequency } from "@/lib/habit-display";
 import type { HabitClientItem } from "@/lib/page-data/habits";
 import {
@@ -60,6 +61,11 @@ import {
   unarchiveHabit,
   updateHabitOrder,
 } from "@/app/[locale]/(protected)/habits/actions";
+
+const HabitFormDialog = dynamic(
+  () => import("@/components/habits/habit-form-dialog").then((m) => m.HabitFormDialog),
+  { ssr: false },
+);
 
 export type { HabitClientItem } from "@/lib/page-data/habits";
 
@@ -487,7 +493,7 @@ export function HabitsClient({ habits: initialHabits, categories }: Props) {
   return (
     <div className="space-y-5">
       <PerfectDayBanner show={perfectDay} />
-      <LevelUpModal
+      <LazyLevelUpModal
         open={Boolean(levelUp)}
         onOpenChange={() => setLevelUp(null)}
         level={levelUp?.level ?? 1}
@@ -530,13 +536,15 @@ export function HabitsClient({ habits: initialHabits, categories }: Props) {
         {periodSections}
       </DndContext>
 
-      <HabitFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        categories={categories}
-        initial={editHabit}
-        onSaved={() => setFormOpen(false)}
-      />
+      {formOpen ? (
+        <HabitFormDialog
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          categories={categories}
+          initial={editHabit}
+          onSaved={() => setFormOpen(false)}
+        />
+      ) : null}
 
       <AlertDialog open={Boolean(deleteId)} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent className="border-[#1e1e3a] bg-[#0f0f1a]">

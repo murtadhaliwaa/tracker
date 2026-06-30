@@ -10,8 +10,81 @@ import {
   rewardFormSchema,
 } from "@/lib/validators";
 
+const DEFAULT_NOTIFICATION_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
 function revalidateSettings() {
   revalidateLocalePaths("/settings");
+}
+
+async function resolveNotificationId(
+  userId: string,
+  parsed: { id?: string; habitId?: string; time?: string },
+) {
+  if (parsed.id) return parsed.id;
+
+  const habitId = parsed.habitId;
+  if (!habitId) throw new Error("Notification id or habitId required");
+
+  const existing = await prisma.notificationSetting.findFirst({
+    where: { userId, habitId },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+
+  const created = await prisma.notificationSetting.create({
+    data: {
+      userId,
+      habitId,
+      time: parsed.time ?? "08:00",
+      isEnabled: false,
+      days: DEFAULT_NOTIFICATION_DAYS,
+    },
+  });
+  return created.id;
+}
+
+export async function ensureNotificationSettings() {
+  const viewer = await requireViewer();
+  const habits = await prisma.habit.findMany({
+    where: { userId: viewer.userId, isArchived: false },
+    select: { id: true, title: true },
+  });
+  const existing = await prisma.notificationSetting.findMany({
+    where: { userId: viewer.userId },
+    select: { habitId: true, id: true, time: true, isEnabled: true },
+  });
+  const byHabit = new Map(existing.map((row) => [row.habitId, row]));
+  const missing = habits.filter((habit) => !byHabit.has(habit.id));
+
+  if (missing.length > 0) {
+    await prisma.notificationSetting.createMany({
+      data: missing.map((habit) => ({
+        userId: viewer.userId,
+        habitId: habit.id,
+        time: "08:00",
+        isEnabled: false,
+        days: DEFAULT_NOTIFICATION_DAYS,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  const rows = await prisma.notificationSetting.findMany({
+    where: { userId: viewer.userId },
+    select: { id: true, habitId: true, time: true, isEnabled: true },
+  });
+  const rowByHabit = new Map(rows.map((row) => [row.habitId, row]));
+
+  return habits.map((habit) => {
+    const row = rowByHabit.get(habit.id);
+    return {
+      id: row?.id ?? null,
+      habitId: habit.id,
+      habitTitle: habit.title,
+      time: row?.time ?? "08:00",
+      isEnabled: row?.isEnabled ?? false,
+    };
+  });
 }
 
 export async function updatePreferredLanguage(input: unknown) {
@@ -37,34 +110,37 @@ function parseNotificationToggle(input: unknown, enabled: boolean) {
 export async function enableNotification(input: unknown) {
   const viewer = await requireViewer();
   const parsed = parseNotificationToggle(input, true);
+  const id = await resolveNotificationId(viewer.userId, parsed);
   await prisma.notificationSetting.updateMany({
-    where: { id: parsed.id, userId: viewer.userId },
+    where: { id, userId: viewer.userId },
     data: { isEnabled: true },
   });
   revalidateSettings();
-  return { success: true as const };
+  return { success: true as const, id };
 }
 
 export async function disableNotification(input: unknown) {
   const viewer = await requireViewer();
   const parsed = parseNotificationToggle(input, false);
+  const id = await resolveNotificationId(viewer.userId, parsed);
   await prisma.notificationSetting.updateMany({
-    where: { id: parsed.id, userId: viewer.userId },
+    where: { id, userId: viewer.userId },
     data: { isEnabled: false },
   });
   revalidateSettings();
-  return { success: true as const };
+  return { success: true as const, id };
 }
 
 export async function updateNotificationTime(input: unknown) {
   const viewer = await requireViewer();
   const parsed = notificationTimeSchema.parse(input);
+  const id = await resolveNotificationId(viewer.userId, parsed);
   await prisma.notificationSetting.updateMany({
-    where: { id: parsed.id, userId: viewer.userId },
+    where: { id, userId: viewer.userId },
     data: { time: parsed.time },
   });
   revalidateSettings();
-  return { success: true as const };
+  return { success: true as const, id };
 }
 
 export async function createReward(input: unknown) {

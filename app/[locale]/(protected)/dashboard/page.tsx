@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { getViewerContext } from "@/lib/viewer";
 import { getDashboardPageData } from "@/lib/page-data/dashboard";
 import { DashboardClient } from "@/components/dashboard/dashboard-client";
+import { ShellStreakSync } from "@/components/shared/shell-streak-sync";
 
 export default async function DashboardPage() {
   const t = await getTranslations("dashboard");
@@ -22,20 +23,23 @@ export default async function DashboardPage() {
   }
 
   return (
-    <DashboardClient
-      title={t("title")}
-      streak={data.streak}
-      freezesAvailable={data.freezesAvailable}
-      healthValue={data.healthBar?.currentHealth ?? 0}
-      maxHealth={data.healthBar?.maxHealth ?? 5}
-      level={data.profile?.level ?? 1}
-      profileTitle={data.profile?.title ?? "Novice"}
-      currentXP={data.profile?.currentXP ?? 0}
-      xpToNextLevel={data.profile?.xpToNextLevel ?? 100}
-      showOnboarding={data.showOnboarding}
-      dailyHabits={data.dailyHabits}
-      boss={data.boss}
-      reflection={data.reflection}
-    />
+    <>
+      <ShellStreakSync streak={data.streak} freezesAvailable={data.freezesAvailable} />
+      <DashboardClient
+        title={t("title")}
+        streak={data.streak}
+        freezesAvailable={data.freezesAvailable}
+        healthValue={data.healthBar?.currentHealth ?? 0}
+        maxHealth={data.healthBar?.maxHealth ?? 5}
+        level={data.profile?.level ?? 1}
+        profileTitle={data.profile?.title ?? "Novice"}
+        currentXP={data.profile?.currentXP ?? 0}
+        xpToNextLevel={data.profile?.xpToNextLevel ?? 100}
+        showOnboarding={data.showOnboarding}
+        dailyHabits={data.dailyHabits}
+        boss={data.boss}
+        reflection={data.reflection}
+      />
+    </>
   );
 }

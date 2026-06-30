@@ -170,3 +170,16 @@ export async function markLessonComplete(courseId: string) {
   if (!nextLesson) throw new Error("No lessons remaining");
   return toggleLessonComplete(nextLesson.id);
 }
+
+export async function ensureMissingCourseLessons(
+  courses: { id: string; totalLessons: number }[],
+) {
+  const viewer = await requireViewer();
+  if (courses.length === 0) return;
+
+  await Promise.all(
+    courses.map((course) =>
+      ensureCourseLessons(course.id, viewer.userId, course.totalLessons),
+    ),
+  );
+}

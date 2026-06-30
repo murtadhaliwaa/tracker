@@ -11,7 +11,7 @@ import { RPGPageHeader } from "@/components/ui/rpg-page-header";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api-fetch";
-import { LevelUpModal } from "@/components/shared/level-up-modal";
+import { LazyLevelUpModal } from "@/components/shared/lazy-level-up-modal";
 import {
   WeeklyReviewDialog,
   type ReviewFormValues,
@@ -168,7 +168,7 @@ export function ReviewClient({ reviews: initialReviews }: Props) {
 
   return (
     <div className="space-y-5">
-      <LevelUpModal
+      <LazyLevelUpModal
         open={Boolean(levelUp)}
         onOpenChange={() => setLevelUp(null)}
         level={levelUp?.level ?? 1}

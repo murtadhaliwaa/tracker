@@ -72,8 +72,11 @@ export default async function AchievementsPage() {
   const viewer = await getViewerContext();
   if (!viewer) return <div className="text-sm text-rpg-muted">No user context found.</div>;
 
-  await checkAndUnlockAchievements(viewer.userId);
+  // Displayed locked/unlocked state is derived from the live context inside
+  // getAchievementsForUser, so render does not need to wait for the DB write.
+  // Persist any newly unlocked rows in the background instead of blocking.
   const achievements = await getAchievementsForUser(viewer.userId);
+  void checkAndUnlockAchievements(viewer.userId).catch(() => undefined);
 
   return (
     <div className="space-y-10">

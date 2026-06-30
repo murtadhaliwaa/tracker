@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { format, startOfWeek, subWeeks } from "date-fns";
 import { Info } from "lucide-react";
 import {
   Bar,
@@ -55,25 +54,6 @@ type Props = {
   ghostLeague: GhostLeague;
 };
 
-type MeditationSession = {
-  sessionDate: string;
-  duration: number;
-};
-
-function buildMeditationTrend(sessions: MeditationSession[]) {
-  return Array.from({ length: 4 }).map((_, i) => {
-    const weekStart = startOfWeek(subWeeks(new Date(), 3 - i), { weekStartsOn: 1 });
-    const weekEnd = startOfWeek(subWeeks(new Date(), 2 - i), { weekStartsOn: 1 });
-    const minutes = sessions
-      .filter((m) => {
-        const d = new Date(m.sessionDate);
-        return d >= weekStart && d < weekEnd;
-      })
-      .reduce((a, m) => a + m.duration, 0);
-    return { week: format(weekStart, "MMM d"), minutes };
-  });
-}
-
 const CHART_GOLD = "#D4AF37";
 const CHART_PURPLE = "#7C3AED";
 const CHART_GRID = "#2a2a4e";
@@ -114,23 +94,9 @@ function StatSectionHeading({
   );
 }
 
-export function StatsClient({ weeklyXp, radar, meditationTrend: initialTrend, heatmapDays, ghostLeague }: Props) {
+export function StatsClient({ weeklyXp, radar, meditationTrend, heatmapDays, ghostLeague }: Props) {
   const t = useTranslations("stats");
-  const [meditationTrend, setMeditationTrend] = useState(initialTrend);
   const [infoKey, setInfoKey] = useState<StatInfoKey | null>(null);
-
-  useEffect(() => {
-    fetch("/api/mind/meditation")
-      .then((r) => r.json())
-      .then((data: { sessions: MeditationSession[] }) => {
-        if (data.sessions?.length) {
-          setMeditationTrend(buildMeditationTrend(data.sessions));
-        }
-      })
-      .catch(() => {
-        /* keep server-provided trend as fallback */
-      });
-  }, []);
 
   const weeklyMaxXp = Math.max(...weeklyXp.map((item) => item.xp), 1);
   const meditationMax = Math.max(...meditationTrend.map((item) => item.minutes), 1);

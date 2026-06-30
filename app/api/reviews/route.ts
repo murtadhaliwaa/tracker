@@ -41,9 +41,10 @@ export async function POST(request: NextRequest) {
       });
 
       const xpResult = await awardXP(tx, viewer.userId, 20, "weekly_review", 1);
-      const unlockedAchievements = await checkAndUnlockAchievements(viewer.userId, tx);
-      return { reflection, ...xpResult, unlockedAchievements };
+      return { reflection, ...xpResult };
     });
+
+    void checkAndUnlockAchievements(viewer.userId).catch(() => undefined);
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {

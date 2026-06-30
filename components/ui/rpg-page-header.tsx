@@ -3,7 +3,7 @@
 import { type ReactNode, useSyncExternalStore } from "react";
 import { useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
-import BlurText from "@/components/BlurText";
+import { LazyBlurText } from "@/components/react-bits/lazy";
 import { prefersReducedMotion } from "@/components/react-bits/rpg-theme";
 
 const ARABIC_RE = /[\u0600-\u06FF]/;
@@ -51,7 +51,7 @@ export function RPGPageHeader({ title, subtitle, action, className }: Props) {
           </div>
           {animateTitle ? (
             <h1 className="rpg-page-title text-rpg-gold">
-              <BlurText
+              <LazyBlurText
                 text={title}
                 delay={80}
                 stepDuration={0.3}

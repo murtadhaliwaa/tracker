@@ -7,7 +7,7 @@ export async function GET() {
   const viewer = await requireApiViewer();
   if (isNextResponse(viewer)) return viewer;
 
-  await checkAndUnlockAchievements(viewer.userId);
+  void checkAndUnlockAchievements(viewer.userId).catch(() => undefined);
   const achievements = await getAchievementsForUser(viewer.userId);
   return NextResponse.json({ achievements });
 }

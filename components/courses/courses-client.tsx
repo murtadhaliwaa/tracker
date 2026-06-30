@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { LevelUpModal } from "@/components/shared/level-up-modal";
+import { LazyLevelUpModal } from "@/components/shared/lazy-level-up-modal";
 import { CourseFormDialog, type CourseFormValues } from "@/components/courses/course-form-dialog";
 
 type LessonItem = {
@@ -152,7 +152,7 @@ export function CoursesClient({ courses: initialCourses }: Props) {
 
   return (
     <div className="space-y-5">
-      <LevelUpModal
+      <LazyLevelUpModal
         open={Boolean(levelUp)}
         onOpenChange={() => setLevelUp(null)}
         level={levelUp?.level ?? 1}

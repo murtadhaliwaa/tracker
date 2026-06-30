@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import ShinyText from "@/components/ShinyText";
+import { LazyShinyText } from "@/components/react-bits/lazy";
 import { RPG_SHINY_GOLD } from "@/components/react-bits/rpg-theme";
 
 type Props = {
@@ -16,7 +16,7 @@ export function PerfectDayCelebrationBanner({ onDismiss }: Props) {
   return (
     <div className="perfect-day-banner relative mb-5 flex w-full items-center gap-4 rounded-xl px-5 py-4">
       <p className="min-w-0 flex-1 font-cinzel text-lg font-bold">
-        <ShinyText
+        <LazyShinyText
           text={t("perfectDayBannerText")}
           color={RPG_SHINY_GOLD.color}
           shineColor={RPG_SHINY_GOLD.shineColor}

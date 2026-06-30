@@ -2,6 +2,7 @@ import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { todayLogFilter } from "@/lib/habit-day";
 import type { HabitFrequency } from "@/lib/habit-display";
+import { resolveSessionStreak } from "@/lib/streak-session";
 
 export type HabitClientItem = {
   id: string;
@@ -23,12 +24,14 @@ export type HabitClientItem = {
 export type HabitsPageData = {
   habits: HabitClientItem[];
   categories: string[];
+  streak: number;
+  freezesAvailable: number;
 };
 
 export const getHabitsPageData = cache(async (userId: string): Promise<HabitsPageData> => {
   const todayFilter = todayLogFilter();
 
-  const [habits, categories] = await Promise.all([
+  const [habits, categories, sessionStreak] = await Promise.all([
     prisma.habit.findMany({
       where: { userId },
       orderBy: [{ period: "asc" }, { order: "asc" }],
@@ -54,6 +57,7 @@ export const getHabitsPageData = cache(async (userId: string): Promise<HabitsPag
       orderBy: { name: "asc" },
       select: { name: true },
     }),
+    resolveSessionStreak(userId),
   ]);
 
   return {
@@ -74,5 +78,7 @@ export const getHabitsPageData = cache(async (userId: string): Promise<HabitsPag
       completedToday: habit.logs.length > 0,
     })),
     categories: categories.map((c) => c.name),
+    streak: sessionStreak.currentStreak,
+    freezesAvailable: sessionStreak.freezesAvailable,
   };
 });

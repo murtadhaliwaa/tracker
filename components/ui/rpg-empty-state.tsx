@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import BlurText from "@/components/BlurText";
+import { LazyBlurText } from "@/components/react-bits/lazy";
 import { prefersReducedMotion } from "@/components/react-bits/rpg-theme";
 
 type Props = {
@@ -36,7 +36,7 @@ export function RPGEmptyState({ icon: Icon, title, subtitle, className }: Props)
       {reducedMotion ? (
         <p className="mt-4 font-heading text-lg text-rpg-gold">{title}</p>
       ) : (
-        <BlurText
+        <LazyBlurText
           text={title}
           delay={60}
           stepDuration={0.25}

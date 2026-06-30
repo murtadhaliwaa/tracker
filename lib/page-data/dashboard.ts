@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { todayLogFilter } from "@/lib/habit-day";
 import { getWeeklyBossForDisplay, toBossPayload } from "@/lib/weekly-boss";
 import { getShellProfile } from "@/lib/page-data/shell-profile";
+import { resolveSessionStreak } from "@/lib/streak-session";
 
 export type DashboardDailyHabit = {
   id: string;
@@ -32,7 +33,7 @@ export type DashboardPageData = {
 export const getDashboardPageData = cache(async (userId: string): Promise<DashboardPageData | null> => {
   const todayFilter = todayLogFilter();
 
-  const [profile, healthBar, habits, reflection, overallStreak, habitCount, boss] =
+  const [profile, healthBar, habits, reflection, sessionStreak, habitCount, boss] =
     await Promise.all([
       getShellProfile(userId),
       prisma.healthBar.findUnique({
@@ -58,10 +59,7 @@ export const getDashboardPageData = cache(async (userId: string): Promise<Dashbo
         orderBy: { createdAt: "desc" },
         select: { answers: true, createdAt: true },
       }),
-      prisma.streak.findFirst({
-        where: { userId, habitId: null },
-        select: { currentStreak: true, freezesAvailable: true },
-      }),
+      resolveSessionStreak(userId),
       prisma.habit.count({ where: { userId, isArchived: false } }),
       getWeeklyBossForDisplay(userId),
     ]);
@@ -92,8 +90,8 @@ export const getDashboardPageData = cache(async (userId: string): Promise<Dashbo
           date: reflection.createdAt.toLocaleDateString(),
         }
       : null,
-    streak: overallStreak?.currentStreak ?? 0,
-    freezesAvailable: overallStreak?.freezesAvailable ?? 0,
+    streak: sessionStreak.currentStreak,
+    freezesAvailable: sessionStreak.freezesAvailable,
     showOnboarding:
       !profile?.onboardingComplete && (profile?.totalXP ?? 0) === 0 && habitCount === 0,
   };

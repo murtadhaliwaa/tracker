@@ -90,14 +90,22 @@ export const rewardFormSchema = z.object({
   emoji: z.string().min(1).max(10).default("🎁"),
 });
 
-export const notificationToggleSchema = z.object({
-  id: z.string().cuid(),
-  enabled: z.boolean(),
-});
+export const notificationToggleSchema = z
+  .object({
+    id: z.string().cuid().optional(),
+    habitId: z.string().cuid().optional(),
+    enabled: z.boolean(),
+  })
+  .refine((data) => Boolean(data.id || data.habitId), {
+    message: "id or habitId is required",
+  });
 
 export const notificationTimeSchema = z.object({
-  id: z.string().cuid(),
+  id: z.string().cuid().optional(),
+  habitId: z.string().cuid().optional(),
   time: z.string().regex(/^\d{2}:\d{2}$/),
+}).refine((data) => Boolean(data.id || data.habitId), {
+  message: "id or habitId is required",
 });
 
 export const languageSchema = z.object({

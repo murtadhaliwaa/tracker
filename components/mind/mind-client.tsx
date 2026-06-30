@@ -9,7 +9,7 @@ import { RPGCard } from "@/components/ui/rpg-card";
 import { RPGPageHeader } from "@/components/ui/rpg-page-header";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-fetch";
-import { LevelUpModal } from "@/components/shared/level-up-modal";
+import { LazyLevelUpModal } from "@/components/shared/lazy-level-up-modal";
 import { deleteMeditationSession } from "@/app/[locale]/(protected)/mind/actions";
 import {
   MeditationSessionDialog,
@@ -207,7 +207,7 @@ export function MindClient(props: Props) {
 
   return (
     <div className="space-y-5">
-      <LevelUpModal
+      <LazyLevelUpModal
         open={Boolean(levelUp)}
         onOpenChange={() => setLevelUp(null)}
         level={levelUp?.level ?? 1}

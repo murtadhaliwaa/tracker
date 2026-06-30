@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BorderGlow from "@/components/BorderGlow";
-import ShinyText from "@/components/ShinyText";
+import { LazyShinyText } from "@/components/react-bits/lazy";
 import { RPG_BORDER_GLOW, RPG_SHINY_GOLD } from "@/components/react-bits/rpg-theme";
 import { translateLevelTitle } from "@/lib/level-display";
 
@@ -69,7 +69,7 @@ export function LevelUpModal({ open, onOpenChange, level, title }: Props) {
         <div className="level-up-card p-12 text-center">
           <Shield className="mx-auto size-16 text-rpg-gold" strokeWidth={1.5} />
           <p className="level-up-heading mt-6 font-cinzel text-[40px] font-bold">
-            <ShinyText
+            <LazyShinyText
               text={t("levelUpHeading")}
               color={RPG_SHINY_GOLD.color}
               shineColor={RPG_SHINY_GOLD.shineColor}

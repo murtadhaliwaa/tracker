@@ -31,18 +31,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { LevelUpModal } from "@/components/shared/level-up-modal";
+import { LazyLevelUpModal } from "@/components/shared/lazy-level-up-modal";
 import { PerfectDayCelebrationBanner } from "@/components/shared/perfect-day-celebration-banner";
-import BorderGlow from "@/components/BorderGlow";
+import { LazyBorderGlow } from "@/components/shared/lazy-border-glow";
 import { RPG_BORDER_GLOW } from "@/components/react-bits/rpg-theme";
+import { DashboardBentoSkeleton } from "@/components/dashboard/dashboard-bento-skeleton";
 import { habitIconDisplay, habitAccentColor } from "@/lib/habit-display";
 import { logHabit } from "@/app/[locale]/(protected)/habits/actions";
 import { getMissedHabitsYesterday, useStreakFreeze as activateStreakFreeze } from "@/app/[locale]/(protected)/dashboard/actions";
 
-const AnimatedContent = dynamic(() => import("@/components/AnimatedContent"), { ssr: false });
+const AnimatedContent = dynamic(() => import("@/components/AnimatedContent"), {
+  loading: () => null,
+});
 const DashboardMagicBento = dynamic(
   () => import("@/components/dashboard/dashboard-magic-bento").then((m) => m.DashboardMagicBento),
-  { ssr: false },
+  { loading: () => <DashboardBentoSkeleton /> },
 );
 const OnboardingModal = dynamic(
   () =>
@@ -212,7 +215,7 @@ export function DashboardClient(props: Props) {
     <div className="space-y-10">
       {props.showOnboarding ? <OnboardingModal open /> : null}
 
-      <LevelUpModal
+      <LazyLevelUpModal
         open={Boolean(levelUp)}
         onOpenChange={() => setLevelUp(null)}
         level={levelUp?.level ?? 1}
@@ -362,7 +365,7 @@ export function DashboardClient(props: Props) {
           </div>
         </RPGCard>
 
-        <BorderGlow {...RPG_BORDER_GLOW}>
+        <LazyBorderGlow {...RPG_BORDER_GLOW}>
           <RPGCard glow="none" className="rpg-boss-card">
             <div>
               <p className="flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-rpg-muted">
@@ -395,7 +398,7 @@ export function DashboardClient(props: Props) {
               </div>
             </div>
           </RPGCard>
-        </BorderGlow>
+        </LazyBorderGlow>
         </div>
       </AnimatedContent>
 

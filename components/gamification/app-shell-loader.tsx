@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/gamification/app-shell";
 import { getTitleFromLevel } from "@/lib/level-utils";
 import { getShellProfile } from "@/lib/page-data/shell-profile";
-import { processMissedStreakDays } from "@/lib/streak-engine";
+import { getShellStreak } from "@/lib/page-data/shell-streak";
 
 export async function AppShellLoader({
   userId,
@@ -15,7 +15,7 @@ export async function AppShellLoader({
 }) {
   const [profile, overallStreak] = await Promise.all([
     getShellProfile(userId),
-    processMissedStreakDays(userId),
+    getShellStreak(userId),
   ]);
 
   if (profile?.preferredLanguage && profile.preferredLanguage !== locale) {

@@ -40,6 +40,8 @@ const nextConfig = {
       "lucide-react",
       "date-fns",
       "recharts",
+      "motion",
+      "gsap",
       "@dnd-kit/core",
       "@dnd-kit/sortable",
     ],

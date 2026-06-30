@@ -44,15 +44,12 @@ export async function completeCourseLesson(userId: string, courseId: string, les
     let leveledUp = lessonXpResult.leveledUp;
     let newLevel = lessonXpResult.newLevel;
     let newTitle = lessonXpResult.newTitle;
-    let unlockedAchievements: string[] = [];
-
     if (isComplete) {
       const bonusXpResult = await awardXP(tx, userId, COURSE_COMPLETE_BONUS, "course_completion", 1);
       bonusXpAwarded = bonusXpResult.xpAwarded;
       leveledUp = leveledUp || bonusXpResult.leveledUp;
       newLevel = bonusXpResult.leveledUp ? bonusXpResult.newLevel : newLevel;
       newTitle = bonusXpResult.leveledUp ? bonusXpResult.newTitle : newTitle;
-      unlockedAchievements = await checkAndUnlockAchievements(userId, tx);
     }
 
     return {
@@ -66,12 +63,16 @@ export async function completeCourseLesson(userId: string, courseId: string, les
       leveledUp,
       newLevel,
       newTitle,
-      unlockedAchievements,
+      unlockedAchievements: [] as string[],
       currentXP: lessonXpResult.currentXP,
       xpToNextLevel: lessonXpResult.xpToNextLevel,
       totalXP: lessonXpResult.totalXP,
     };
   });
+
+  if (result.isComplete) {
+    void checkAndUnlockAchievements(userId).catch(() => undefined);
+  }
 
   const bossResult = await syncWeeklyBossProgress(userId);
 

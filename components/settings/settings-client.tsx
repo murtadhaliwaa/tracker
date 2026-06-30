@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ import {
   deleteReward,
   disableNotification,
   enableNotification,
+  ensureNotificationSettings,
   exportHabitLogsCsv,
   exportUserData,
   updateNotificationTime,
@@ -32,7 +33,8 @@ import { emptyRewardForm, type RewardFormValues } from "@/lib/reward-display";
 import { RewardFormDialog } from "@/components/settings/reward-form-dialog";
 
 type NotificationItem = {
-  id: string;
+  id: string | null;
+  habitId: string;
   habitTitle: string;
   time: string;
   isEnabled: boolean;
@@ -68,7 +70,14 @@ export function SettingsClient({ preferredLanguage, totalXP: initialTotalXP, not
   const [rewards, setRewards] = useState(initialRewards);
   const [rewardOpen, setRewardOpen] = useState(false);
   const [rewardInitial, setRewardInitial] = useState<RewardForm | null>(null);
-  const [timeEdit, setTimeEdit] = useState<{ id: string; time: string } | null>(null);
+  const [timeEdit, setTimeEdit] = useState<{ id: string | null; habitId: string; time: string } | null>(null);
+
+  useEffect(() => {
+    if (!initialNotifications.some((n) => !n.id)) return;
+    void ensureNotificationSettings()
+      .then(setNotifications)
+      .catch(() => undefined);
+  }, [initialNotifications]);
 
   const switchLanguage = () => {
     const next = preferredLanguage === "ar" ? "en" : "ar";
@@ -170,7 +179,7 @@ export function SettingsClient({ preferredLanguage, totalXP: initialTotalXP, not
         <div className="mt-4 space-y-3">
           {notifications.map((n) => (
             <div
-              key={n.id}
+              key={n.habitId}
               dir="ltr"
               className="flex items-center gap-3 rounded-lg border border-[#1e1e3a] bg-[#0f0f1a] p-3"
             >
@@ -186,11 +195,17 @@ export function SettingsClient({ preferredLanguage, totalXP: initialTotalXP, not
                   disabled={pending}
                   onCheckedChange={(checked) =>
                     startTransition(async () => {
-                      if (checked) await enableNotification({ id: n.id, enabled: true });
-                      else await disableNotification({ id: n.id, enabled: false });
+                      const payload = n.id
+                        ? { id: n.id, enabled: checked }
+                        : { habitId: n.habitId, enabled: checked };
+                      const result = checked
+                        ? await enableNotification(payload)
+                        : await disableNotification(payload);
                       setNotifications((prev) =>
                         prev.map((item) =>
-                          item.id === n.id ? { ...item, isEnabled: checked } : item,
+                          item.habitId === n.habitId
+                            ? { ...item, isEnabled: checked, id: result.id ?? item.id }
+                            : item,
                         ),
                       );
                       toast.success(t("notificationUpdated"));
@@ -200,7 +215,7 @@ export function SettingsClient({ preferredLanguage, totalXP: initialTotalXP, not
                 <button
                   type="button"
                   className="flex size-8 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-[#1e1e3a]"
-                  onClick={() => setTimeEdit({ id: n.id, time: n.time })}
+                  onClick={() => setTimeEdit({ id: n.id, habitId: n.habitId, time: n.time })}
                   aria-label={t("editReminderTime")}
                 >
                   <Bell className={`size-4 ${n.isEnabled ? "text-rpg-teal" : "text-rpg-secondary"}`} />
@@ -397,9 +412,17 @@ export function SettingsClient({ preferredLanguage, totalXP: initialTotalXP, not
               onClick={() =>
                 startTransition(async () => {
                   if (!timeEdit) return;
-                  await updateNotificationTime(timeEdit);
+                  const result = await updateNotificationTime(
+                    timeEdit.id
+                      ? { id: timeEdit.id, time: timeEdit.time }
+                      : { habitId: timeEdit.habitId, time: timeEdit.time },
+                  );
                   setNotifications((prev) =>
-                    prev.map((n) => (n.id === timeEdit.id ? { ...n, time: timeEdit.time } : n)),
+                    prev.map((n) =>
+                      n.habitId === timeEdit.habitId
+                        ? { ...n, time: timeEdit.time, id: result.id ?? n.id }
+                        : n,
+                    ),
                   );
                   toast.success(t("notificationUpdated"));
                   setTimeEdit(null);
