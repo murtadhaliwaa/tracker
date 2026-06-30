@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect, useMemo } from "react";
+import { useRef, useState, useTransition, useEffect, useMemo, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { patchShellFromAward } from "@/lib/shell-stats-client";
 import { toast } from "sonner";
@@ -10,7 +10,11 @@ import { RPGPageHeader } from "@/components/ui/rpg-page-header";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { createCourse, toggleLessonComplete } from "@/app/[locale]/(protected)/courses/actions";
+import {
+  createCourse,
+  refreshWeeklyBoss,
+  toggleLessonComplete,
+} from "@/app/[locale]/(protected)/courses/actions";
 import { getCourseCategoryLabel, getCourseCategoryLabels } from "@/lib/course-display";
 import {
   Dialog,
@@ -48,8 +52,10 @@ export function CoursesClient({ courses: initialCourses }: Props) {
   const t = useTranslations("courses");
   const tc = useTranslations("common");
   const categoryLabels = useMemo(() => getCourseCategoryLabels(t), [t]);
-  const [pending, startTransition] = useTransition();
+  const [formPending, startFormTransition] = useTransition();
   const [courses, setCourses] = useState(initialCourses);
+  const syncQueueRef = useRef(Promise.resolve());
+  const activeSyncsRef = useRef(0);
   const [formOpen, setFormOpen] = useState(false);
   const [detailCourseId, setDetailCourseId] = useState<string | null>(null);
   const [celebrate, setCelebrate] = useState<{ title: string; xp: number } | null>(null);
@@ -63,7 +69,7 @@ export function CoursesClient({ courses: initialCourses }: Props) {
 
   const saveCourse = (form: CourseFormValues) => {
     if (!form.title || !form.category || form.totalLessons < 1) return;
-    startTransition(async () => {
+    startFormTransition(async () => {
       try {
         const data = await createCourse({
           title: form.title,
@@ -81,50 +87,80 @@ export function CoursesClient({ courses: initialCourses }: Props) {
     });
   };
 
-  const handleLessonToggle = (courseId: string, lessonId: string) => {
-    const snapshot = courses;
-    setCourses((prev) =>
-      prev.map((c) => {
-        if (c.id !== courseId) return c;
-        const lessons = c.lessons.map((l) =>
-          l.id === lessonId ? { ...l, isCompleted: true } : l,
-        );
-        const completedLessons = lessons.filter((l) => l.isCompleted).length;
-        return { ...c, lessons, completedLessons };
-      }),
-    );
+  const flushWeeklyBoss = useCallback(() => {
+    void refreshWeeklyBoss()
+      .then((boss) => {
+        window.dispatchEvent(new CustomEvent("boss-updated", { detail: boss }));
+      })
+      .catch(() => undefined);
+  }, []);
 
-    startTransition(async () => {
-      try {
-        const result = await toggleLessonComplete(lessonId);
+  const handleLessonToggle = useCallback(
+    (courseId: string, lessonId: string) => {
+      let shouldSync = false;
 
-        setCourses((prev) =>
-          prev.map((c) => (c.id === courseId ? result.course : c)),
-        );
+      setCourses((prev) => {
+        const course = prev.find((c) => c.id === courseId);
+        const lesson = course?.lessons.find((l) => l.id === lessonId);
+        if (!course || !lesson || lesson.isCompleted) return prev;
+        shouldSync = true;
 
-        if (result.alreadyCompleted) return;
+        return prev.map((c) => {
+          if (c.id !== courseId) return c;
+          const lessons = c.lessons.map((l) =>
+            l.id === lessonId ? { ...l, isCompleted: true } : l,
+          );
+          return {
+            ...c,
+            lessons,
+            completedLessons: lessons.filter((l) => l.isCompleted).length,
+          };
+        });
+      });
 
-        if (result.isComplete) {
-          const courseTitle = courses.find((c) => c.id === courseId)?.title ?? "";
-          setCelebrate({ title: courseTitle, xp: result.bonusXpAwarded });
+      if (!shouldSync) return;
+
+      activeSyncsRef.current += 1;
+      syncQueueRef.current = syncQueueRef.current
+        .then(async () => {
+          const result = await toggleLessonComplete(lessonId);
+          if (result.alreadyCompleted) return;
+
           patchShellFromAward(result);
-          if (result.leveledUp) setLevelUp({ level: result.newLevel, title: result.newTitle });
-        } else {
-          toast.success(tc("xpAwarded", { xp: result.xpAwarded }));
-          patchShellFromAward(result);
-        }
-
-        window.dispatchEvent(
-          new CustomEvent("boss-updated", {
-            detail: result.boss,
-          }),
-        );
-      } catch {
-        toast.error(tc("error"));
-        setCourses(snapshot);
-      }
-    });
-  };
+          if (result.leveledUp) {
+            setLevelUp({ level: result.newLevel, title: result.newTitle });
+          }
+          if (result.isComplete) {
+            setCourses((prev) => {
+              const title = prev.find((c) => c.id === courseId)?.title ?? "";
+              setCelebrate({ title, xp: result.bonusXpAwarded });
+              return prev;
+            });
+          }
+        })
+        .catch(() => {
+          setCourses((prev) =>
+            prev.map((c) => {
+              if (c.id !== courseId) return c;
+              const lessons = c.lessons.map((l) =>
+                l.id === lessonId ? { ...l, isCompleted: false } : l,
+              );
+              return {
+                ...c,
+                lessons,
+                completedLessons: lessons.filter((l) => l.isCompleted).length,
+              };
+            }),
+          );
+          toast.error(tc("error"));
+        })
+        .finally(() => {
+          activeSyncsRef.current -= 1;
+          if (activeSyncsRef.current === 0) flushWeeklyBoss();
+        });
+    },
+    [flushWeeklyBoss, tc],
+  );
 
   return (
     <div className="space-y-5">
@@ -207,7 +243,7 @@ export function CoursesClient({ courses: initialCourses }: Props) {
       <CourseFormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
-        pending={pending}
+        pending={formPending}
         onSubmit={saveCourse}
       />
 
@@ -231,7 +267,7 @@ export function CoursesClient({ courses: initialCourses }: Props) {
                 >
                   <Checkbox
                     checked={lesson.isCompleted}
-                    disabled={pending || lesson.isCompleted}
+                    disabled={lesson.isCompleted}
                     onCheckedChange={() => {
                       if (!lesson.isCompleted) {
                         handleLessonToggle(detailCourse.id, lesson.id);

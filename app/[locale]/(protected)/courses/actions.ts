@@ -149,18 +149,21 @@ export async function toggleLessonComplete(lessonId: string) {
   });
 
   void checkAndUnlockAchievements(viewer.userId).catch(() => undefined);
-  const bossResult = await syncWeeklyBossProgress(viewer.userId);
-  const course = await fetchCourseClientRow(viewer.userId, courseId);
-
   revalidateCourses(true);
+
   return {
     ...result,
-    course,
-    boss: {
-      currentValue: bossResult.boss.currentValue,
-      targetValue: bossResult.boss.targetValue,
-      isCompleted: bossResult.boss.isCompleted,
-    },
+    courseId,
+  };
+}
+
+export async function refreshWeeklyBoss() {
+  const viewer = await requireViewer();
+  const bossResult = await syncWeeklyBossProgress(viewer.userId);
+  return {
+    currentValue: bossResult.boss.currentValue,
+    targetValue: bossResult.boss.targetValue,
+    isCompleted: bossResult.boss.isCompleted,
   };
 }
 
