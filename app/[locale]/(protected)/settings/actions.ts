@@ -3,6 +3,7 @@
 import { revalidateLocalePaths } from "@/lib/revalidate-paths";
 import { prisma } from "@/lib/prisma";
 import { requireViewer } from "@/lib/action-utils";
+import { deductXP } from "@/lib/xp";
 import {
   languageSchema,
   notificationTimeSchema,
@@ -192,6 +193,48 @@ export async function deleteReward(rewardId: string) {
   await prisma.rewardVault.deleteMany({ where: { id: rewardId, userId: viewer.userId } });
   revalidateSettings();
   return { success: true as const };
+}
+
+export async function redeemReward(rewardId: string) {
+  const viewer = await requireViewer();
+
+  const result = await prisma.$transaction(async (tx) => {
+    const reward = await tx.rewardVault.findFirst({
+      where: { id: rewardId, userId: viewer.userId },
+    });
+    if (!reward) throw new Error("NOT_FOUND");
+    if (reward.claimedAt) throw new Error("Already redeemed");
+
+    const deductResult = await deductXP(tx, viewer.userId, reward.xpCost, "reward_redeem");
+    if (!deductResult.success) {
+      return { ...deductResult, insufficientXp: true as const, xpCost: reward.xpCost };
+    }
+
+    await tx.rewardVault.update({
+      where: { id: reward.id },
+      data: { claimedAt: new Date(), isUnlocked: true },
+    });
+
+    return {
+      ...deductResult,
+      insufficientXp: false as const,
+      xpCost: reward.xpCost,
+    };
+  });
+
+  if (!result.success && result.insufficientXp) {
+    return { success: false as const, insufficientXp: true as const };
+  }
+
+  revalidateSettings();
+  return {
+    success: true as const,
+    xpCost: result.xpCost,
+    newLevel: result.newLevel,
+    newTitle: result.newTitle,
+    currentXP: result.currentXP,
+    xpToNextLevel: result.xpToNextLevel,
+  };
 }
 
 export async function exportUserData() {

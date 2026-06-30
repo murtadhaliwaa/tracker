@@ -48,7 +48,23 @@ export async function createWeeklyReview(input: unknown) {
 
   void checkAndUnlockAchievements(viewer.userId).catch(() => undefined);
   revalidateReviewPages();
-  return result;
+  return {
+    review: {
+      id: result.reflection.id,
+      createdAt: result.reflection.createdAt.toISOString(),
+      weekRating: parsed.weekRating,
+      winOfWeek: parsed.winOfWeek,
+      challengeFaced: parsed.challengeFaced,
+      lessonLearned: parsed.lessonLearned,
+      nextWeekGoal: parsed.nextWeekGoal,
+    },
+    xpAwarded: result.xpAwarded,
+    leveledUp: result.leveledUp,
+    newLevel: result.newLevel,
+    newTitle: result.newTitle,
+    currentXP: result.currentXP,
+    xpToNextLevel: result.xpToNextLevel,
+  };
 }
 
 export async function updateWeeklyReview(input: unknown) {

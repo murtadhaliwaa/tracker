@@ -8,9 +8,12 @@ import { BookOpen, Brain, Trash2 } from "lucide-react";
 import { RPGCard } from "@/components/ui/rpg-card";
 import { RPGPageHeader } from "@/components/ui/rpg-page-header";
 import { Button } from "@/components/ui/button";
-import { apiFetch } from "@/lib/api-fetch";
+import {
+  createMeditationSession,
+  createReadingSession,
+  deleteMeditationSession,
+} from "@/app/[locale]/(protected)/mind/actions";
 import { LazyLevelUpModal } from "@/components/shared/lazy-level-up-modal";
-import { deleteMeditationSession } from "@/app/[locale]/(protected)/mind/actions";
 import {
   MeditationSessionDialog,
   type MeditationFormValues,
@@ -105,26 +108,10 @@ export function MindClient(props: Props) {
     if (medForm.duration < 1) return;
     startTransition(async () => {
       try {
-        const result = await apiFetch<{
-          session: {
-            id: string;
-            type: string;
-            duration: number;
-            notes: string | null;
-            sessionDate: string;
-            createdAt: string;
-          };
-          xpAwarded: number;
-          leveledUp: boolean;
-          newLevel: number;
-          newTitle: string;
-        }>("/api/mind/meditation", {
-          method: "POST",
-          body: JSON.stringify({
-            duration: medForm.duration,
-            notes: medForm.notes || undefined,
-            date: medForm.date,
-          }),
+        const result = await createMeditationSession({
+          duration: medForm.duration,
+          notes: medForm.notes || undefined,
+          date: medForm.date,
         });
 
         setMeditationCount((c) => c + 1);
@@ -158,27 +145,11 @@ export function MindClient(props: Props) {
     if (!readForm.bookTitle.trim() || readForm.pagesRead < 1) return;
     startTransition(async () => {
       try {
-        const result = await apiFetch<{
-          session: {
-            id: string;
-            bookTitle: string;
-            pagesRead: number;
-            rating: number | null;
-            notes: string | null;
-            createdAt: string;
-          };
-          xpAwarded: number;
-          leveledUp: boolean;
-          newLevel: number;
-          newTitle: string;
-        }>("/api/mind/reading", {
-          method: "POST",
-          body: JSON.stringify({
-            bookTitle: readForm.bookTitle,
-            pagesRead: readForm.pagesRead,
-            notes: readForm.notes || undefined,
-            date: readForm.date,
-          }),
+        const result = await createReadingSession({
+          bookTitle: readForm.bookTitle,
+          pagesRead: readForm.pagesRead,
+          notes: readForm.notes || undefined,
+          date: readForm.date,
         });
 
         setReadingCount((c) => c + 1);

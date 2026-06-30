@@ -221,32 +221,3 @@ export async function completeHabitForUser(userId: string, input: unknown) {
   void checkAndUnlockAchievements(userId).catch(() => undefined);
   return result;
 }
-
-export async function getUserSnapshot(userId: string) {
-  const [user, profile, healthBar, overallStreak] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId } }),
-    prisma.userProfile.findUnique({ where: { userId } }),
-    prisma.healthBar.findUnique({ where: { userId } }),
-    prisma.streak.findFirst({ where: { userId, habitId: null } }),
-  ]);
-
-  return { user, profile, healthBar, overallStreak };
-}
-
-export async function updateUserProfile(
-  userId: string,
-  data: {
-    level?: number;
-    totalXP?: number;
-    currentXP?: number;
-    xpToNextLevel?: number;
-    title?: string;
-    preferredLanguage?: string;
-  },
-) {
-  return prisma.userProfile.upsert({
-    where: { userId },
-    update: data,
-    create: { userId, ...data },
-  });
-}

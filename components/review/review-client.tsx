@@ -10,7 +10,10 @@ import { RPGCard } from "@/components/ui/rpg-card";
 import { RPGPageHeader } from "@/components/ui/rpg-page-header";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { apiFetch } from "@/lib/api-fetch";
+import {
+  createWeeklyReview,
+  updateWeeklyReview,
+} from "@/app/[locale]/(protected)/review/actions";
 import { LazyLevelUpModal } from "@/components/shared/lazy-level-up-modal";
 import {
   WeeklyReviewDialog,
@@ -62,23 +65,6 @@ function StarRating({
   );
 }
 
-function parseReview(reflection: {
-  id: string;
-  createdAt: string;
-  answers: Record<string, unknown>;
-}): ReviewItem {
-  const a = reflection.answers;
-  return {
-    id: reflection.id,
-    createdAt: reflection.createdAt,
-    weekRating: (a.weekRating as number) ?? 3,
-    winOfWeek: (a.winOfWeek as string) ?? (a.q1 as string) ?? "",
-    challengeFaced: (a.challengeFaced as string) ?? (a.q2 as string) ?? "",
-    lessonLearned: (a.lessonLearned as string) ?? "",
-    nextWeekGoal: (a.nextWeekGoal as string) ?? (a.q3 as string) ?? "",
-  };
-}
-
 export function ReviewClient({ reviews: initialReviews }: Props) {
   const t = useTranslations("review");
   const tc = useTranslations("common");
@@ -118,10 +104,7 @@ export function ReviewClient({ reviews: initialReviews }: Props) {
     startTransition(async () => {
       try {
         if (form.id) {
-          await apiFetch(`/api/reviews/${form.id}`, {
-            method: "PATCH",
-            body: JSON.stringify(form),
-          });
+          await updateWeeklyReview(form);
           setReviews((prev) =>
             prev.map((r) =>
               r.id === form.id
@@ -138,22 +121,8 @@ export function ReviewClient({ reviews: initialReviews }: Props) {
           );
           toast.success(t("updated"));
         } else {
-          const result = await apiFetch<{
-            reflection: { id: string; createdAt: string; answers: Record<string, unknown> };
-            xpAwarded: number;
-            leveledUp: boolean;
-            newLevel: number;
-            newTitle: string;
-          }>("/api/reviews", {
-            method: "POST",
-            body: JSON.stringify(form),
-          });
-          const item = parseReview({
-            id: result.reflection.id,
-            createdAt: result.reflection.createdAt,
-            answers: result.reflection.answers,
-          });
-          setReviews((prev) => [item, ...prev]);
+          const result = await createWeeklyReview(form);
+          setReviews((prev) => [result.review, ...prev]);
           toast.success(t("saved"));
           patchShellFromAward(result);
           if (result.leveledUp) setLevelUp({ level: result.newLevel, title: result.newTitle });

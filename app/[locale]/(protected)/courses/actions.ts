@@ -6,6 +6,7 @@ import { awardXP } from "@/lib/xp";
 import { syncWeeklyBossProgress } from "@/lib/weekly-boss";
 import { checkAndUnlockAchievements } from "@/lib/achievement-engine";
 import { ensureCourseLessons, syncCourseCompletedCount } from "@/lib/course-lessons";
+import { fetchCourseClientRow } from "@/lib/page-data/courses";
 import { revalidateLocalePaths } from "@/lib/revalidate-paths";
 import { courseFormSchema, updateCourseSchema } from "@/lib/validators";
 
@@ -41,7 +42,8 @@ export async function createCourse(input: unknown) {
   });
 
   revalidateCourses();
-  return { success: true as const, courseId: course.id };
+  const courseRow = await fetchCourseClientRow(viewer.userId, course.id);
+  return { success: true as const, course: courseRow };
 }
 
 export async function updateCourse(input: unknown) {
@@ -81,6 +83,7 @@ export async function deleteCourse(courseId: string) {
 
 export async function toggleLessonComplete(lessonId: string) {
   const viewer = await requireViewer();
+  let courseId = "";
 
   const result = await prisma.$transaction(async (tx) => {
     const lesson = await tx.courseLesson.findFirst({
@@ -88,6 +91,7 @@ export async function toggleLessonComplete(lessonId: string) {
       include: { course: true },
     });
     if (!lesson) throw new Error("Lesson not found");
+    courseId = lesson.courseId;
     if (lesson.isCompleted) {
       const completedLessons = await syncCourseCompletedCount(lesson.courseId, tx);
       return {
@@ -146,13 +150,17 @@ export async function toggleLessonComplete(lessonId: string) {
 
   void checkAndUnlockAchievements(viewer.userId).catch(() => undefined);
   const bossResult = await syncWeeklyBossProgress(viewer.userId);
+  const course = await fetchCourseClientRow(viewer.userId, courseId);
 
   revalidateCourses(true);
   return {
     ...result,
-    bossCurrentValue: bossResult.boss.currentValue,
-    bossTargetValue: bossResult.boss.targetValue,
-    bossIsCompleted: bossResult.boss.isCompleted,
+    course,
+    boss: {
+      currentValue: bossResult.boss.currentValue,
+      targetValue: bossResult.boss.targetValue,
+      isCompleted: bossResult.boss.isCompleted,
+    },
   };
 }
 

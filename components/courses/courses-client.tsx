@@ -10,7 +10,7 @@ import { RPGPageHeader } from "@/components/ui/rpg-page-header";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { apiFetch } from "@/lib/api-fetch";
+import { createCourse, toggleLessonComplete } from "@/app/[locale]/(protected)/courses/actions";
 import { getCourseCategoryLabel, getCourseCategoryLabels } from "@/lib/course-display";
 import {
   Dialog,
@@ -44,24 +44,6 @@ type Props = {
   courses: CourseItem[];
 };
 
-type LessonPatchResult = {
-  alreadyCompleted: boolean;
-  completedLessons: number;
-  totalLessons: number;
-  isComplete: boolean;
-  xpAwarded: number;
-  bonusXpAwarded: number;
-  leveledUp: boolean;
-  newLevel: number;
-  newTitle: string;
-  course: CourseItem;
-  boss: {
-    currentValue: number;
-    targetValue: number;
-    isCompleted: boolean;
-  };
-};
-
 export function CoursesClient({ courses: initialCourses }: Props) {
   const t = useTranslations("courses");
   const tc = useTranslations("common");
@@ -83,15 +65,12 @@ export function CoursesClient({ courses: initialCourses }: Props) {
     if (!form.title || !form.category || form.totalLessons < 1) return;
     startTransition(async () => {
       try {
-        const data = await apiFetch<{ course: CourseItem }>("/api/courses", {
-          method: "POST",
-          body: JSON.stringify({
-            title: form.title,
-            description: form.description || undefined,
-            category: form.category,
-            icon: form.icon,
-            totalLessons: form.totalLessons,
-          }),
+        const data = await createCourse({
+          title: form.title,
+          description: form.description || undefined,
+          category: form.category,
+          icon: form.icon,
+          totalLessons: form.totalLessons,
         });
         setCourses((prev) => [data.course, ...prev]);
         toast.success(t("created"));
@@ -117,10 +96,7 @@ export function CoursesClient({ courses: initialCourses }: Props) {
 
     startTransition(async () => {
       try {
-        const result = await apiFetch<LessonPatchResult>(`/api/courses/${courseId}/lessons`, {
-          method: "PATCH",
-          body: JSON.stringify({ lessonId }),
-        });
+        const result = await toggleLessonComplete(lessonId);
 
         setCourses((prev) =>
           prev.map((c) => (c.id === courseId ? result.course : c)),

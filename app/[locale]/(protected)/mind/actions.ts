@@ -19,12 +19,15 @@ export async function createMeditationSession(input: unknown) {
   const parsed = meditationSessionSchema.parse(input);
 
   const result = await prisma.$transaction(async (tx) => {
+    const sessionDate = parsed.date ?? new Date();
     const session = await tx.meditationSession.create({
       data: {
         userId: viewer.userId,
         duration: parsed.duration,
         type: parsed.type ?? "breath",
         notes: parsed.notes,
+        sessionDate,
+        createdAt: sessionDate,
         focusMultiplierEarned: parsed.deepFocus ? 1.5 : 1,
       },
     });
@@ -35,7 +38,22 @@ export async function createMeditationSession(input: unknown) {
 
   void checkAndUnlockAchievements(viewer.userId).catch(() => undefined);
   revalidateMind();
-  return result;
+  return {
+    session: {
+      id: result.session.id,
+      type: result.session.type,
+      duration: result.session.duration,
+      notes: result.session.notes,
+      sessionDate: result.session.sessionDate.toISOString(),
+      createdAt: result.session.createdAt.toISOString(),
+    },
+    xpAwarded: result.xpAwarded,
+    leveledUp: result.leveledUp,
+    newLevel: result.newLevel,
+    newTitle: result.newTitle,
+    currentXP: result.currentXP,
+    xpToNextLevel: result.xpToNextLevel,
+  };
 }
 
 export async function deleteMeditationSession(sessionId: string) {
@@ -69,7 +87,22 @@ export async function createReadingSession(input: unknown) {
 
   void checkAndUnlockAchievements(viewer.userId).catch(() => undefined);
   revalidateMind();
-  return result;
+  return {
+    session: {
+      id: result.session.id,
+      bookTitle: result.session.bookTitle,
+      pagesRead: result.session.pagesRead,
+      rating: result.session.rating,
+      notes: result.session.notes,
+      createdAt: result.session.createdAt.toISOString(),
+    },
+    xpAwarded: result.xpAwarded,
+    leveledUp: result.leveledUp,
+    newLevel: result.newLevel,
+    newTitle: result.newTitle,
+    currentXP: result.currentXP,
+    xpToNextLevel: result.xpToNextLevel,
+  };
 }
 
 export async function getBookTitles() {

@@ -24,6 +24,7 @@ import {
   ensureNotificationSettings,
   exportHabitLogsCsv,
   exportUserData,
+  redeemReward,
   updateNotificationTime,
   updatePreferredLanguage,
 } from "@/app/[locale]/(protected)/settings/actions";
@@ -111,21 +112,11 @@ export function SettingsClient({ preferredLanguage, totalXP: initialTotalXP, not
   const availableRewards = rewards.filter((r) => !r.claimedAt);
   const redeemedRewards = rewards.filter((r) => r.claimedAt);
 
-  const redeemReward = (rewardId: string) => {
+  const redeemRewardAction = (rewardId: string) => {
     startTransition(async () => {
       try {
-        const res = await fetch(`/api/rewards/${rewardId}/redeem`, { method: "POST" });
-        const data = (await res.json()) as {
-          error?: string;
-          insufficientXp?: boolean;
-          success?: boolean;
-          newLevel?: number;
-          newTitle?: string;
-          currentXP?: number;
-          xpToNextLevel?: number;
-          xpCost?: number;
-        };
-        if (!res.ok) {
+        const data = await redeemReward(rewardId);
+        if (!data.success) {
           toast.error(data.insufficientXp ? t("insufficientXp") : tc("error"));
           return;
         }
@@ -135,7 +126,7 @@ export function SettingsClient({ preferredLanguage, totalXP: initialTotalXP, not
             r.id === rewardId ? { ...r, claimedAt: new Date().toISOString() } : r,
           ),
         );
-        if (data.xpCost) setTotalXP((xp) => Math.max(0, xp - data.xpCost!));
+        if (data.xpCost) setTotalXP((xp) => Math.max(0, xp - data.xpCost));
         if (
           data.newLevel !== undefined &&
           data.newTitle !== undefined &&
@@ -301,7 +292,7 @@ export function SettingsClient({ preferredLanguage, totalXP: initialTotalXP, not
                       size="sm"
                       disabled={pending}
                       className="border-rpg-gold/40 bg-rpg-gold text-[#0a0a0f] hover:bg-rpg-gold/90"
-                      onClick={() => redeemReward(r.id)}
+                      onClick={() => redeemRewardAction(r.id)}
                     >
                       {t("redeem")}
                     </Button>
